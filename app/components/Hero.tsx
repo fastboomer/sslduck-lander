@@ -4,9 +4,9 @@ export const Hero: React.FC = () => {
     return (
         <section className="pt-32 pb-16 px-6">
             <div className="max-w-7xl mx-auto text-center">
-                <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-6">
+                <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-royal-blue mb-6">
                     Premium Research for <br />
-                    <span className="text-royal-blue">Elite Career Growth</span>
+                    Elite Career Growth
                 </h1>
                 <p className="text-xl text-foreground/60 max-w-2xl mx-auto mb-10">
                     Unlocking professional excellence through expert-led articles and data-driven career analysis.
