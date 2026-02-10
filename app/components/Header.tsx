@@ -4,12 +4,13 @@ export const Header: React.FC = () => {
     return (
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-silver/20">
             <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-                <div className="flex flex-col items-start leading-none group relative">
+                <div className="flex flex-col items-start leading-none group relative pb-14 md:pb-16">
                     <div className="flex items-baseline font-bold text-2xl tracking-tight relative">
                         <span className="text-foreground">SSLDUCK</span>
                         <span className="text-royal-blue">.COM</span>
 
                         {/* Logo positioned absolutely below the SSLDUCK part, stopping at the dot */}
+                        {/* Reserved space using padding-bottom on the parent to prevent overlap */}
                         <div className="absolute top-[1.2em] left-0 w-[calc(100%-2.4em)] h-auto pointer-events-none">
                             <img
                                 src="/logo.png"
