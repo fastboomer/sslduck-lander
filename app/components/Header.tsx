@@ -9,8 +9,8 @@ export const Header: React.FC = () => {
                         <span className="text-foreground">SSLDUCK</span>
                         <span className="text-royal-blue">.COM</span>
 
-                        {/* Logo positioned absolutely below the SSLDUCK. part */}
-                        <div className="absolute top-[1.2em] left-0 w-[calc(100%-1.65em)] h-auto pointer-events-none">
+                        {/* Logo positioned absolutely below the SSLDUCK part, stopping at the dot */}
+                        <div className="absolute top-[1.2em] left-0 w-[calc(100%-2.4em)] h-auto pointer-events-none">
                             <img
                                 src="/logo.png"
                                 alt=""
