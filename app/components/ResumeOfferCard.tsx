@@ -52,7 +52,10 @@ export const ResumeOfferCard: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto px-6 py-20" id="audit">
-            <div className="bg-card-bg rounded-3xl p-8 md:p-12 relative overflow-hidden group animate-glow border border-silver/10 shadow-xl">
+            <div
+                className="bg-card-bg rounded-3xl p-8 md:p-12 relative overflow-hidden group animate-glow border border-silver/10 shadow-xl"
+                style={{ backgroundColor: '#d3b892' }}
+            >
                 <div className="relative z-10">
                     <h2 className="text-3xl font-bold mb-2">In a rush?</h2>
                     <p className="text-lg text-foreground/60 mb-8">
