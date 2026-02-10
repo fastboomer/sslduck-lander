@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: rgb(245, 239, 224);
   --foreground: #050505;
   --royal-blue: #002366;
   --silver: #C0C0C0;
+  --card-bg: #d3b892;
 }
 
 @theme inline {
@@ -12,12 +13,16 @@
   --color-foreground: var(--foreground);
   --color-royal-blue: var(--royal-blue);
   --color-silver: var(--silver);
+  --color-card-bg: var(--card-bg);
   --animate-glow: glow 2s ease-in-out infinite alternate;
 }
 
 @layer base {
-  body {
-    @apply bg-background text-foreground antialiased selection:bg-royal-blue/20;
+
+  body,
+  main {
+    background-color: var(--background);
+    @apply text-foreground antialiased selection:bg-royal-blue/20;
   }
 }
 
@@ -26,7 +31,7 @@
     @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-lg;
     box-shadow: 0 0 15px rgba(0, 35, 102, 0.1);
   }
-  
+
   .glass-hover:hover {
     @apply border-white/40;
     box-shadow: 0 0 25px rgba(0, 35, 102, 0.2);
@@ -42,6 +47,7 @@
   from {
     box-shadow: 0 0 10px rgba(0, 35, 102, 0.1);
   }
+
   to {
     box-shadow: 0 0 25px rgba(0, 35, 102, 0.3);
   }

@@ -52,7 +52,7 @@ export const ResumeOfferCard: React.FC = () => {
 
     return (
         <div className="max-w-4xl mx-auto px-6 py-20" id="audit">
-            <div className="glass rounded-3xl p-8 md:p-12 relative overflow-hidden group animate-glow">
+            <div className="bg-card-bg rounded-3xl p-8 md:p-12 relative overflow-hidden group animate-glow border border-silver/10 shadow-xl">
                 <div className="relative z-10">
                     <h2 className="text-3xl font-bold mb-2">In a rush?</h2>
                     <p className="text-lg text-foreground/60 mb-8">
@@ -66,8 +66,8 @@ export const ResumeOfferCard: React.FC = () => {
                             onDrop={handleDrop}
                             className={cn(
                                 "relative border-2 border-dashed rounded-2xl p-8 transition-all duration-300 flex flex-col items-center justify-center text-center",
-                                isDragging ? "border-royal-blue bg-royal-blue/5 scale-[1.02]" : "border-silver/20 bg-white/5",
-                                resumeText ? "border-green-500/50 bg-green-500/5" : ""
+                                isDragging ? "border-royal-blue bg-royal-blue/10 scale-[1.02]" : "border-silver/30 bg-background/20",
+                                resumeText ? "border-green-500/50 bg-green-500/10" : ""
                             )}
                         >
                             <Upload className={cn("w-12 h-12 mb-4", resumeText ? "text-green-500" : "text-royal-blue")} />
@@ -103,7 +103,7 @@ export const ResumeOfferCard: React.FC = () => {
                                 value={jobDescription}
                                 onChange={(e) => setJobDescription(e.target.value)}
                                 placeholder="Paste the job description or link here..."
-                                className="w-full bg-white/50 border border-silver/20 rounded-xl p-4 focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue outline-none transition-all"
+                                className="w-full bg-background/40 border border-silver/30 rounded-xl p-4 focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue outline-none transition-all placeholder:text-foreground/40"
                             />
                         </div>
 
