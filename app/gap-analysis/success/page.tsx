@@ -15,24 +15,13 @@ function GapSuccessContent() {
 
     const [gloName, setGloName] = useState('');
     const [gloConsent, setGloConsent] = useState(false);
-    const [salesContent, setSalesContent] = useState({
+    const [salesContent] = useState({
         headline: "Your Report is In Glenn's Inbox.",
         subheadline: "Accelerate your transition with our Elite Narrative Reclamation Service.",
         salesCopy: "Our team takes the GAP data and manually crafts a bespoke resume and cover letter package that removes every hurdle identified in the audit.",
         buttonText: "Schedule Strategy Call",
         buttonLink: "#"
     });
-
-    // Listen to Admin-controlled sales content
-    useEffect(() => {
-        if (!db) return;
-        const unsubscribe = onSnapshot(doc(db, 'settings', 'gapSuccessPage'), (snapshot) => {
-            if (snapshot.exists()) {
-                setSalesContent(snapshot.data() as any);
-            }
-        });
-        return () => unsubscribe();
-    }, []);
 
     const handleGloConnect = () => {
         if (!gloConsent || !gloName) return;
