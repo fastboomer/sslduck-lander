@@ -1,11 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: rgb(245, 239, 224);
-  --foreground: #050505;
+  --background: #FAFAFA;
+  --foreground: #020617;
   --royal-blue: #002366;
-  --silver: #C0C0C0;
-  --card-bg: #d3b892;
+  --silver: #E2E8F0;
+  --card-bg: #FFFFFF;
+  --soft-lavender: #F1F5F9;
 }
 
 @theme inline {
@@ -14,6 +15,9 @@
   --color-royal-blue: var(--royal-blue);
   --color-silver: var(--silver);
   --color-card-bg: var(--card-bg);
+  --color-soft-lavender: var(--soft-lavender);
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
   --animate-glow: glow 2s ease-in-out infinite alternate;
 }
 

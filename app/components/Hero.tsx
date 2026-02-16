@@ -11,13 +11,19 @@ export const Hero: React.FC = () => {
                 <p className="text-xl text-foreground/60 max-w-2xl mx-auto mb-10">
                     Unlocking professional excellence through expert-led articles and data-driven career analysis.
                 </p>
-                <div className="flex justify-center gap-4">
-                    <button className="bg-royal-blue text-white px-8 py-4 rounded-full font-semibold hover:bg-royal-blue/90 transition-all shadow-lg hover:shadow-royal-blue/20">
+                <div className="flex flex-col md:flex-row justify-center gap-4">
+                    <a
+                        href="/articles"
+                        className="bg-royal-blue text-white px-8 py-4 rounded-full font-semibold hover:bg-royal-blue/90 transition-all shadow-lg hover:shadow-royal-blue/20 text-center"
+                    >
                         Read Articles
-                    </button>
-                    <button className="bg-white text-royal-blue border border-royal-blue px-8 py-4 rounded-full font-semibold hover:bg-royal-blue/5 transition-all">
+                    </a>
+                    <a
+                        href="#"
+                        className="bg-white text-royal-blue border border-royal-blue px-8 py-4 rounded-full font-semibold hover:bg-royal-blue/5 transition-all text-center"
+                    >
                         Join Membership
-                    </button>
+                    </a>
                 </div>
             </div>
         </section>
