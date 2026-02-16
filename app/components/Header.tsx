@@ -59,12 +59,16 @@ export default function Header() {
             <header className="fixed top-0 left-0 right-0 h-20 md:h-28 bg-white border-b border-silver/30 z-[1000] shadow-sm">
                 <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between relative">
                     {/* Logo Section */}
-                    <a href="/" className="flex-shrink-0 flex items-center">
+                    <a href="/" className="flex-shrink-0 flex items-center gap-3">
                         <img
                             src="/logo.png"
                             alt="SSLDUCK Logo"
-                            className="h-12 md:h-20 w-auto transition-all duration-300"
+                            className="h-12 md:h-16 w-auto transition-all duration-300"
                         />
+                        <div className="flex flex-col">
+                            <span className="text-xl font-serif font-black text-royal-blue leading-none">SSLDUCK</span>
+                            <span className="text-[8px] font-bold text-royal-blue/40 tracking-[0.2em]">VERSION 12-PRO</span>
+                        </div>
                     </a>
 
                     {/* Desktop Navigation */}

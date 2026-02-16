@@ -25,6 +25,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `console.log("SSLDUCK_DEPLOYMENT_ACTIVE: v12-PRO");`
+          }}
+        />
         {children}
       </body>
     </html>

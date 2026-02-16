@@ -8,7 +8,7 @@ export const Footer: React.FC = () => {
                     © 2026 SSLDUCK.COM
                 </p>
                 <p className="text-xs text-foreground/40 uppercase tracking-widest">
-                    Member Blue Ridge Technology Family of Companies
+                    Member Blue Ridge Technology Family • v12-PRO
                 </p>
             </div>
         </footer>
