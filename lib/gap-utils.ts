@@ -9,24 +9,10 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
     if (file.type === 'application/pdf') {
         try {
-            // Try the new PDFParse class API (pdf-parse 2.x)
-            const pdfParseModule = await import('pdf-parse');
-            const PDFParse = pdfParseModule.PDFParse || (pdfParseModule as any).default?.PDFParse;
-
-            if (typeof PDFParse === 'function') {
-                const parser = new PDFParse({ data: buffer });
-                const result = await parser.getText();
-                return result.text;
-            }
-
-            // Fallback to the classic function API (pdf-parse 1.x)
-            const pdfClassic = (typeof pdfParseModule === 'function') ? pdfParseModule : (pdfParseModule as any).default;
-            if (typeof pdfClassic === 'function') {
-                const data = await pdfClassic(buffer);
-                return data.text;
-            }
-
-            throw new Error('Could not find a valid PDF parser in the pdf-parse module.');
+            // Use standard require for problematic modules in Next.js build
+            const pdf = require('pdf-parse');
+            const data = await pdf(buffer);
+            return data.text;
         } catch (err: any) {
             console.error('PDF extraction error:', err);
             throw new Error(`Text extraction failed: ${err.message}`);
@@ -36,7 +22,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
         file.name.endsWith('.docx')
     ) {
         try {
-            const mammoth = await import('mammoth');
+            const mammoth = require('mammoth');
             const result = await mammoth.extractRawText({ buffer });
             return result.value;
         } catch (err: any) {
