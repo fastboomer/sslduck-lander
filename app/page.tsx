@@ -6,6 +6,7 @@ import { Footer } from './components/Footer';
 export default function Home() {
   return (
     <main className="min-h-screen">
+      <div className="fixed bottom-4 left-4 bg-black text-white px-2 py-1 text-[8px] z-[9999] opacity-50">v12-PRO-DEBUG</div>
       <Header />
       <Hero />
       <ResumeOfferCard />
