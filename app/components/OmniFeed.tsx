@@ -637,12 +637,22 @@ export const OmniFeed: React.FC = () => {
                                                                 />
                                                             </div>
                                                         </div>
-                                                        <button
-                                                            onClick={handlePublish}
-                                                            className="mt-4 w-full bg-royal-blue text-soft-lavender py-4 rounded-xl font-bold uppercase tracking-widest shadow-lg hover:opacity-90 transition-all font-sans"
-                                                        >
-                                                            {editingId ? 'Update Article' : 'Publish Article'}
-                                                        </button>
+                                                        <div className="flex gap-4 mt-4">
+                                                            <button
+                                                                onClick={handlePublish}
+                                                                className="flex-1 bg-royal-blue text-soft-lavender py-4 rounded-xl font-bold uppercase tracking-widest shadow-lg hover:opacity-90 transition-all font-sans"
+                                                            >
+                                                                {editingId ? 'Update Article' : 'Publish Article'}
+                                                            </button>
+                                                            {editingId && (
+                                                                <button
+                                                                    onClick={resetForm}
+                                                                    className="px-8 border border-royal-blue/20 text-royal-blue py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-royal-blue/5 transition-all font-sans"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
