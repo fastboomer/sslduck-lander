@@ -57,24 +57,33 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 3. Load Prompt Template
-        console.log("[GAP_PROCESS] Loading prompt template...");
+        // 3. Load Prompt Templates
+        console.log("[GAP_PROCESS] Loading prompt templates...");
         const promptPath = path.join(process.cwd(), 'GAP-INSTRUCTIONS', 'gap-analysis-prompt.md');
+        const examplePath = path.join(process.cwd(), 'GAP-INSTRUCTIONS', 'gap-example.md');
+
         if (!fs.existsSync(promptPath)) throw new Error("Prompt template missing.");
         let promptTemplate = fs.readFileSync(promptPath, 'utf8');
+        let exampleTemplate = fs.existsSync(examplePath) ? fs.readFileSync(examplePath, 'utf8') : '';
 
         // 4. Prepare Final Prompt
         const finalPrompt = promptTemplate
             .replace(/<requirements>[\s\S]*?<\/requirements>/, `<requirements>\n${combinedReqText}\n</requirements>`)
-            .replace(/<resume>[\s\S]*?<\/resume>/, `<resume>\n${combinedResumeText}\n</resume>`);
+            .replace(/<resume>[\s\S]*?<\/resume>/, `<resume>\n${combinedResumeText}\n</resume>`)
+            .replace(/<example>[\s\S]*?<\/example>/, `<example>\n${exampleTemplate}\n</example>`);
 
         // 5. Execute AI (Pro with Flash fallback)
-        console.log("[GAP_PROCESS] Executing GAP Analysis...");
+        console.log("[GAP_PROCESS] Executing GAP Analysis with Grounding...");
         let analysis = '';
+        const modelOptions = {
+            tools: [{ googleSearch: {} }] // Enable Google Search Retrieval
+        };
+
         try {
             const { text } = await generateText({
                 model: google('gemini-1.5-pro-002'),
                 prompt: finalPrompt,
+                ...modelOptions as any
             });
             analysis = text;
         } catch (proErr: any) {
@@ -83,6 +92,7 @@ export async function POST(req: NextRequest) {
                 const { text } = await generateText({
                     model: google('gemini-2.0-flash-001'),
                     prompt: finalPrompt,
+                    ...modelOptions as any
                 });
                 analysis = text;
             } catch (flashErr: any) {
