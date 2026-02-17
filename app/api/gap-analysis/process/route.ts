@@ -73,17 +73,18 @@ export async function POST(req: NextRequest) {
             .replace(/<example>[\s\S]*?<\/example>/, `<example>\n${exampleTemplate}\n</example>`);
 
         // 5. Execute AI (Pro with Flash fallback)
-        console.log("[GAP_PROCESS] Executing GAP Analysis with Grounding...");
+        console.log("[GAP_PROCESS] Executing GAP Analysis with Google Search Grounding...");
         let analysis = '';
-        const modelOptions = {
-            tools: [{ googleSearch: {} }] // Enable Google Search Retrieval
+
+        const tools: any = {
+            search: google.tools.googleSearch({}),
         };
 
         try {
             const { text } = await generateText({
                 model: google('gemini-1.5-pro-002'),
+                tools,
                 prompt: finalPrompt,
-                ...modelOptions as any
             });
             analysis = text;
         } catch (proErr: any) {
@@ -91,12 +92,12 @@ export async function POST(req: NextRequest) {
             try {
                 const { text } = await generateText({
                     model: google('gemini-2.0-flash-001'),
+                    tools,
                     prompt: finalPrompt,
-                    ...modelOptions as any
                 });
                 analysis = text;
             } catch (flashErr: any) {
-                console.error("Gemini 1.5 Flash also failed:", flashErr.message);
+                console.error("Gemini 2.0 Flash also failed:", flashErr.message);
                 throw new Error(`AI Analysis failed: ${flashErr.message}`);
             }
         }
