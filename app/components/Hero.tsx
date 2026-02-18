@@ -1,4 +1,5 @@
 import React from 'react';
+import { GloVideo } from './GloVideo';
 
 export const Hero: React.FC = () => {
     return (
@@ -24,6 +25,11 @@ export const Hero: React.FC = () => {
                     >
                         Join Membership
                     </a>
+                </div>
+
+                {/* Aesthetic spacing and Glo Video */}
+                <div className="mt-16">
+                    <GloVideo />
                 </div>
             </div>
         </section>
