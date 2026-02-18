@@ -43,16 +43,11 @@ export const GloVideo: React.FC = () => {
         }
     };
 
-    const landscapeUrl = "https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/GLO%20VIDEOS%2FThe%20Obvious%20Choice%20with%20Glo%20(Landscape)_1080p_caption.mp4?alt=media&token=673d0623-cc18-4c76-9229-dfdf6f4da67d&v=2.2";
-    const portraitUrl = "https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/GLO%20VIDEOS%2F1-The%20Obvious%20Choice%20with%20Glo_1080p_caption.mp4?alt=media&token=26b0fc2d-bc32-4544-9878-9e6e75e206a3&v=2.2";
+    const landscapeUrl = "https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/GLO%20VIDEOS%2FThe%20Obvious%20Choice%20with%20Glo%20(Landscape)_1080p_caption.mp4?alt=media&token=673d0623-cc18-4c76-9229-dfdf6f4da67d";
+    const portraitUrl = "https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/GLO%20VIDEOS%2F1-The%20Obvious%20Choice%20with%20Glo_1080p_caption.mp4?alt=media&token=26b0fc2d-bc32-4544-9878-9e6e75e206a3";
 
     return (
         <div className="glass max-w-4xl mx-auto p-2 overflow-hidden rounded-3xl flex items-center justify-center relative group">
-            {/* Version Tag - Blue/Bold for v2.3 differentiation */}
-            <div className="absolute top-6 left-6 z-50 bg-blue-600 text-white px-3 py-1.5 rounded-full text-[12px] font-black shadow-2xl pointer-events-none">
-                DEPLOY-V2.3-ULTRASONIC
-            </div>
-
             <video
                 ref={videoRef}
                 key={isMobile ? 'portrait' : 'landscape'}
@@ -68,25 +63,24 @@ export const GloVideo: React.FC = () => {
                 Your browser does not support the video tag.
             </video>
 
-            {/* Unmute Overlay Button - Pushed further left for verification */}
+            {/* Premium Unmute Overlay Button - Positioned to the left of 3-dot/Fullscreen menu */}
             <button
-                id="unmute-btn-v23"
                 onClick={toggleMute}
-                className={`absolute bottom-10 right-32 md:right-48 bg-green-500 hover:bg-green-400 text-black p-3 rounded-full transition-all duration-300 z-50 shadow-2xl border-2 border-white
-                    ${isTouchDevice ? 'opacity-100 scale-125' : 'opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95'}`}
+                className={`absolute bottom-5 right-24 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white p-2.5 rounded-full transition-all duration-300 z-10 shadow-lg border border-white/20
+                    ${isTouchDevice ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95'}`}
                 title={isMuted ? "Unmute" : "Mute"}
             >
-                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </button>
 
-            {/* Pulsing Hint - Shows only when muted */}
+            {/* Subtle Hint for Muted State */}
             {isMuted && (
                 <div
                     onClick={toggleMute}
-                    className="absolute inset-0 flex items-center justify-center cursor-pointer pointer-events-none z-40"
+                    className="absolute inset-0 flex items-center justify-center cursor-pointer pointer-events-none z-0"
                 >
-                    <div className="bg-royal-blue/90 border-2 border-white/40 backdrop-blur-md text-white px-6 py-3 rounded-full text-base font-black animate-pulse pointer-events-auto opacity-0 group-hover:opacity-100 transition-all duration-500 shadow-2xl">
-                        CONFIRM UNMUTE (V2.3)
+                    <div className="bg-royal-blue/80 backdrop-blur-sm text-white px-5 py-2.5 rounded-full text-sm font-medium animate-pulse pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        Tap to Unmute
                     </div>
                 </div>
             )}
