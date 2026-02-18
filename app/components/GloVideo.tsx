@@ -48,9 +48,9 @@ export const GloVideo: React.FC = () => {
 
     return (
         <div className="glass max-w-4xl mx-auto p-2 overflow-hidden rounded-3xl flex items-center justify-center relative group">
-            {/* LARGE VISIBLE TAG to confirm iPad update */}
-            <div className="absolute top-6 left-6 z-30 bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold shadow-lg pointer-events-none">
-                SYNC-V2.2-READY
+            {/* Version Tag - Blue/Bold for v2.3 differentiation */}
+            <div className="absolute top-6 left-6 z-50 bg-blue-600 text-white px-3 py-1.5 rounded-full text-[12px] font-black shadow-2xl pointer-events-none">
+                DEPLOY-V2.3-ULTRASONIC
             </div>
 
             <video
@@ -68,25 +68,25 @@ export const GloVideo: React.FC = () => {
                 Your browser does not support the video tag.
             </video>
 
-            {/* Unmute Overlay Button - Positioned bottom-right */}
+            {/* Unmute Overlay Button - Pushed further left for verification */}
             <button
-                id="unmute-btn-v22"
+                id="unmute-btn-v23"
                 onClick={toggleMute}
-                className={`absolute bottom-6 right-24 md:right-32 bg-black/80 hover:bg-black/95 backdrop-blur-md text-white p-2.5 rounded-full transition-all duration-300 z-10 shadow-lg border-2 border-royal-blue
-                    ${isTouchDevice ? 'opacity-100 scale-110' : 'opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95'}`}
+                className={`absolute bottom-10 right-32 md:right-48 bg-green-500 hover:bg-green-400 text-black p-3 rounded-full transition-all duration-300 z-50 shadow-2xl border-2 border-white
+                    ${isTouchDevice ? 'opacity-100 scale-125' : 'opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95'}`}
                 title={isMuted ? "Unmute" : "Mute"}
             >
-                {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
             </button>
 
             {/* Pulsing Hint - Shows only when muted */}
             {isMuted && (
                 <div
                     onClick={toggleMute}
-                    className="absolute inset-0 flex items-center justify-center cursor-pointer pointer-events-none"
+                    className="absolute inset-0 flex items-center justify-center cursor-pointer pointer-events-none z-40"
                 >
-                    <div className="bg-royal-blue/90 border border-white/20 backdrop-blur-md text-white px-5 py-2.5 rounded-full text-sm font-bold animate-pulse pointer-events-auto opacity-0 group-hover:opacity-100 transition-all duration-500 shadow-2xl">
-                        Tap to Unmute
+                    <div className="bg-royal-blue/90 border-2 border-white/40 backdrop-blur-md text-white px-6 py-3 rounded-full text-base font-black animate-pulse pointer-events-auto opacity-0 group-hover:opacity-100 transition-all duration-500 shadow-2xl">
+                        CONFIRM UNMUTE (V2.3)
                     </div>
                 </div>
             )}
