@@ -81,7 +81,7 @@ export const ResumeOfferCard: React.FC = () => {
                 <div className="relative z-10 text-royal-blue">
                     <h2 className="text-3xl font-bold mb-2">In a rush? (v12)</h2>
                     <p className="text-lg text-royal-blue/70 mb-8">
-                        Get a professional resume audit & gap analysis delivered in under 48 hours.
+                        Get a Free Professional Resume Audit & GAP Analysis delivered in under 48 hours!
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-8">
@@ -145,7 +145,7 @@ export const ResumeOfferCard: React.FC = () => {
                                 rows={5}
                                 value={jobDescription}
                                 onChange={(e) => setJobDescription(e.target.value)}
-                                placeholder="Paste the job description or link here..."
+                                placeholder="Place employer's complete job description or link here..."
                                 className="w-full bg-[#fcfcfc] border border-royal-blue/10 rounded-xl p-4 focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue outline-none transition-all placeholder:text-royal-blue/30 text-sm"
                             />
                         </div>
