@@ -35,9 +35,12 @@ export const SuccessStories: React.FC = () => {
                     viewport={{ once: true }}
                     className="text-center mb-20"
                 >
-                    <h2 className="text-3xl md:text-5xl font-bold text-royal-blue tracking-tight">
+                    <h2 className="text-3xl md:text-5xl font-bold text-royal-blue tracking-tight mb-4">
                         Stop Losing Jobs You're Actually Qualified For!
                     </h2>
+                    <p className="text-xl md:text-2xl text-royal-blue/70 italic">
+                        "Here is exactly why you need our free GAP Analysis:"
+                    </p>
                 </motion.div>
 
                 {/* Testimonial Grid */}
