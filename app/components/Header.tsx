@@ -47,6 +47,7 @@ export default function Header() {
     }, [isOpen]);
 
     const navLinks = [
+        { name: 'Home', href: 'https://sslduck-lander.vercel.app' },
         { name: 'Articles', href: '/articles' },
         { name: 'Resume Audit', href: '/#audit' },
         { name: 'Career Prep', href: '#' },
