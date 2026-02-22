@@ -14,7 +14,7 @@ const testimonials = [
         quote: "My résumé had the skills, it just wasn't saying them",
         subhead: "Gap Audit + Rewrite",
         image: "https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/simone%20R.png?alt=media&token=641dfd55-3664-45ac-84b7-3c15eef634e6",
-        name: "Simone R."
+        name: "Jabari R."
     },
     {
         quote: "They handed me the hard questions - and the answers",

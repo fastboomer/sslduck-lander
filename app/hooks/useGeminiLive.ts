@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 /**
- * useGeminiLive Hook - HD Version (AudioWorklet + Gemini 2.5 Bidi)
- * Uses v1alpha BidiGenerateContent endpoint with Gemini 2.5 Native Audio.
- * Implements strict camelCase for WebSocket protocol compatibility.
+ * useGeminiLive Hook - Pro Audio Version (2026)
+ * Uses v1alpha BidiGenerateContent + Gemini 2.0 Native Audio.
+ * Implements Sample-Accurate Scheduling & Jitter Buffering for zero-gap playback.
  */
 
 function resample(buffer: Float32Array, from: number, to: number) {
@@ -35,7 +35,14 @@ function floatTo16BitPCM(input: Float32Array) {
         if (absS > peak) peak = absS;
         output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
     }
-    const binary = String.fromCharCode(...new Uint8Array(output.buffer));
+
+    // Robust binary string conversion for btoa (prevents recursion limits)
+    const bytes = new Uint8Array(output.buffer);
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
     return { base64: btoa(binary), peak };
 }
 
@@ -66,10 +73,17 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
     const streamRef = useRef<MediaStream | null>(null);
     const workletNodeRef = useRef<AudioWorkletNode | null>(null);
     const scriptNodeRef = useRef<ScriptProcessorNode | null>(null);
+    const outAnalyserRef = useRef<AnalyserNode | null>(null);
+    const outGainRef = useRef<GainNode | null>(null);
+
+    // Pro Audio State
     const audioQueueRef = useRef<Float32Array[]>([]);
-    const isProcessingQueueRef = useRef(false);
+    const nextScheduleTimeRef = useRef<number>(0);
+    const jitterBufferThreshold = 3; // Increased to 3 chunks to prevent crackling from network jitter
+
     const statusRef = useRef<string>('IDLE');
     const handshakeTimeoutRef = useRef<any>(null);
+    const lastGloSpeechTimeRef = useRef<number>(0);
 
     const updateStatus = useCallback((s: string) => {
         log(`Status: ${s}`);
@@ -107,14 +121,26 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
         }
         workletNodeRef.current = null;
         scriptNodeRef.current = null;
+        outAnalyserRef.current = null;
+        outGainRef.current = null;
+
+        // Reset Pro Audio state
+        audioQueueRef.current = [];
+        nextScheduleTimeRef.current = 0;
+
         if (!keepError) setError(null);
     }, [log, updateStatus]);
 
-    const processAudioQueue = useCallback(async () => {
-        if (isProcessingQueueRef.current || audioQueueRef.current.length === 0 || !audioContextRef.current) return;
-        isProcessingQueueRef.current = true;
+    // Sample-Accurate Scheduling Loop
+    const scheduleAudio = useCallback(() => {
+        if (!audioContextRef.current || audioQueueRef.current.length === 0 || !outGainRef.current) return;
 
-        try {
+        // Initial jitter buffer: Wait for a few chunks to arrive before starting the first segment
+        if (nextScheduleTimeRef.current === 0 && audioQueueRef.current.length < jitterBufferThreshold) {
+            return;
+        }
+
+        while (audioQueueRef.current.length > 0) {
             const pcmData = audioQueueRef.current.shift()!;
             const buffer = audioContextRef.current.createBuffer(1, pcmData.length, 24000);
             buffer.getChannelData(0).set(pcmData);
@@ -122,31 +148,40 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
             const source = audioContextRef.current.createBufferSource();
             source.buffer = buffer;
 
-            const analyser = audioContextRef.current.createAnalyser();
-            analyser.fftSize = 256;
-            source.connect(analyser);
-            analyser.connect(audioContextRef.current.destination);
+            const now = audioContextRef.current.currentTime;
 
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            const updateVol = () => {
-                if (!isProcessingQueueRef.current) return;
-                analyser.getByteFrequencyData(dataArray);
+            // If we've fallen behind (gap in network), reset schedule time
+            if (nextScheduleTimeRef.current < now) {
+                // Buffer by 50ms to allow for browser processing jitter
+                nextScheduleTimeRef.current = now + 0.05;
+            }
+
+            // Connect to persistent gain node (which connects to analyser and destination)
+            source.connect(outGainRef.current);
+            source.start(nextScheduleTimeRef.current);
+
+            // Increment schedule time by exact duration of this buffer
+            nextScheduleTimeRef.current += buffer.duration;
+        }
+    }, [jitterBufferThreshold]);
+
+    // Volume Meter Loop (Shared persistent Analyser)
+    useEffect(() => {
+        let rafId: number;
+        const dataArray = new Uint8Array(256); // persistent allocation
+
+        const updateMeter = () => {
+            if (outAnalyserRef.current && statusRef.current === 'ACTIVE') {
+                outAnalyserRef.current.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b) / dataArray.length;
                 setVolume(avg / 255);
-                requestAnimationFrame(updateVol);
-            };
-            updateVol();
+            }
+            rafId = requestAnimationFrame(updateMeter);
+        };
 
-            source.onended = () => {
-                isProcessingQueueRef.current = false;
-                processAudioQueue();
-            };
-            source.start();
-        } catch (e: any) {
-            log(`Audio Output Err: ${e.message}`);
-            isProcessingQueueRef.current = false;
-        }
-    }, [log]);
+        rafId = requestAnimationFrame(updateMeter);
+        return () => cancelAnimationFrame(rafId);
+    }, []);
 
     const startSession = useCallback(async (selectedDeviceId?: string) => {
         if (!apiKey) { log('API Key missing.'); setError('API Key missing.'); return; }
@@ -154,15 +189,19 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
             setError(null);
             updateStatus('INIT_AUDIO');
 
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            // Initialize with latencyHint prioritized for stability and speed
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
+                latencyHint: 'interactive',
+                sampleRate: 48000
+            });
             const nativeRate = audioContextRef.current.sampleRate;
-            log(`AudioContext at ${nativeRate}Hz`);
+            log(`Pro AudioContext at ${nativeRate}Hz (interactive)`);
 
             let workletSuccess = false;
             try {
                 const workletUrl = new URL('/worklets/pcm-processor.js', window.location.origin).href;
                 await audioContextRef.current.audioWorklet.addModule(workletUrl);
-                log('HD Worklet loaded.');
+                log('Pro Worklet loaded.');
                 workletSuccess = true;
             } catch (e: any) {
                 log(`Worklet fail: ${e.message}. Fallback mode.`);
@@ -187,25 +226,32 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
             if (workletSuccess) {
                 workletNodeRef.current = new AudioWorkletNode(audioContextRef.current, 'pcm-processor');
                 source.connect(workletNodeRef.current);
-                log('Worklet connected.');
+                log('Pro Worklet connected.');
             } else {
-                scriptNodeRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+                scriptNodeRef.current = audioContextRef.current.createScriptProcessor(2048, 1, 1);
                 source.connect(scriptNodeRef.current);
                 scriptNodeRef.current.connect(audioContextRef.current.destination);
                 log('Legacy processor connected.');
             }
 
+            // Persistent Output Chain
+            outGainRef.current = audioContextRef.current.createGain();
+            outAnalyserRef.current = audioContextRef.current.createAnalyser();
+            outAnalyserRef.current.fftSize = 256;
+
+            outGainRef.current.connect(outAnalyserRef.current);
+            outAnalyserRef.current.connect(audioContextRef.current.destination);
+            log('Pro Output Chain (Gain -> Analyser -> Dest) established.');
+
             updateStatus('CONNECTING_WS');
-            // Using v1alpha BidiGenerateContent - The definitive real-time service for Feb 2026
             const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
             const setupWsListeners = (ws: WebSocket) => {
                 ws.onopen = () => {
                     if (wsRef.current !== ws) return;
                     updateStatus('HANDSHAKING');
-                    log('WebSocket Open. Sending Setup (2.5 Native Audio)...');
+                    log('WebSocket Open. Sending Setup (Glo 2.0)...');
 
-                    // CRITICAL: WebSocket Bidi API requires camelCase for all setup and input fields
                     ws.send(JSON.stringify({
                         setup: {
                             model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
@@ -220,7 +266,16 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                                 }
                             },
                             systemInstruction: {
-                                parts: [{ text: `You are Glo, a high-performing career strategist. Context: ${context?.jobDescription?.slice(0, 100) || 'Competitive Professional'}. Be brisk, punchy, and professional. Help ${context?.candidateName || 'the candidate'} optimize their career path. RESPONSE STYLE: Brisk, conversational, concise.` }]
+                                parts: [{
+                                    text: `You are Glo, a high-performing career strategist. STRICT MODALITY RULE: Output ONLY audio. No text or thoughts. 
+                                
+You must lead the conversation with strategic confidence. Listen carefully to the candidate and respond with insightful career advice.
+
+Context: ${context?.analysis || 'Evaluation'}
+Target: ${context?.jobDescription || 'Professional Role'}
+Candidate Name: ${context?.candidateName || 'the candidate'}
+`
+                                }]
                             }
                         }
                     }));
@@ -240,24 +295,52 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                         const data = event.data instanceof Blob ? await event.data.text() : event.data;
                         const response = JSON.parse(data);
 
-                        if (response.setupComplete) {
+                        const isSetupComplete = response.setupComplete || response.setup_complete;
+                        if (isSetupComplete) {
                             if (handshakeTimeoutRef.current) clearTimeout(handshakeTimeoutRef.current);
                             updateStatus('ACTIVE');
                             setIsActive(true);
                             log('V2026 Handshake Confirmed. Link Active.');
 
+                            // Kickstart
+                            setTimeout(() => {
+                                if (ws.readyState === WebSocket.OPEN) {
+                                    ws.send(JSON.stringify({
+                                        clientContent: {
+                                            turns: [{ role: 'user', parts: [{ text: "Hi Glo, I'm here for my career evaluation. Please greet me and share your first strategic insight." }] }],
+                                            turnComplete: true
+                                        }
+                                    }));
+                                    log('Kickstart sent (Strategic).');
+                                }
+                            }, 500);
+
+                            let sentChunks = 0;
                             const handleInputBuffer = (rawData: Float32Array, peak: number) => {
                                 if (ws.readyState === WebSocket.OPEN && statusRef.current === 'ACTIVE') {
                                     setMicPeak(peak);
+
+                                    // Interruption Lock: Ignore mic input if Glo recently started speaking (prevents echo loop)
+                                    const timeSinceGloSpoke = Date.now() - lastGloSpeechTimeRef.current;
+                                    if (timeSinceGloSpoke < 500) return;
+
+                                    // Increased Noise Gate to 0.015 to ignore higher-volume background/echo noise
+                                    if (peak < 0.015) return;
+
                                     const resampledData = resample(rawData, nativeRate, 16000);
                                     const { base64 } = floatTo16BitPCM(resampledData);
 
-                                    // Use camelCase realtimeInput for Bidi protocol
                                     ws.send(JSON.stringify({
                                         realtimeInput: {
-                                            mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: base64 }]
+                                            mediaChunks: [{
+                                                mimeType: 'audio/pcm;rate=16000',
+                                                data: base64
+                                            }]
                                         }
                                     }));
+                                    sentChunks++;
+                                    if (sentChunks === 1) log("Signal Stream established.");
+                                    if (sentChunks % 100 === 0) log(`WSS Activity: Uploading PCM Data (Peak: ${peak.toFixed(4)})...`);
                                 }
                             };
 
@@ -275,19 +358,59 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                             }
                         }
 
-                        // Robust parsing for both snake_case (legacy) and camelCase (Standard)
                         const serverContent = response.serverContent || response.server_content;
-                        const audioBase64 = serverContent?.modelTurn?.parts?.[0]?.inlineData?.data || serverContent?.model_turn?.parts?.[0]?.inline_data?.data;
+                        if (serverContent) {
+                            // Enhanced Telemetry
+                            const modelTurn = serverContent.modelTurn || serverContent.model_turn;
+                            if (modelTurn) {
+                                if (modelTurn.parts?.length > 0) {
+                                    const hasAudio = modelTurn.parts.some((p: any) => p.inlineData || p.inline_data);
+                                    if (!hasAudio) log(`AI Turn Meta: ${JSON.stringify(modelTurn.parts)}`);
+                                }
+                            }
 
-                        if (audioBase64) {
-                            audioQueueRef.current.push(base64ToFloat32(audioBase64));
-                            processAudioQueue();
+                            const turnComplete = serverContent.turnComplete || serverContent.turn_complete;
+                            if (turnComplete) log("AI Turn Complete.");
+
+                            if (!serverContent.modelTurn && !serverContent.model_turn && !turnComplete) {
+                                log(`AI Feed: ${JSON.stringify(serverContent)}`);
+                            }
+                        }
+
+                        const modelTurn = serverContent?.modelTurn || serverContent?.model_turn;
+
+                        // Check for text responses (Gemini Live sometimes responds with text + audio)
+                        const textPart = modelTurn?.parts?.find((p: any) => p.text);
+                        if (textPart?.text) {
+                            log(`AI TEXT: ${textPart.text}`);
+                        }
+
+                        const audioBase64Part = modelTurn?.parts?.find((p: any) => p.inlineData?.data || p.inline_data?.data);
+                        const audioData = audioBase64Part?.inlineData?.data || audioBase64Part?.inline_data?.data;
+
+                        if (audioData) {
+                            if (audioQueueRef.current.length === 0) {
+                                log('Receiving Glo Audio Stream...');
+                                lastGloSpeechTimeRef.current = Date.now();
+                            }
+                            const pcm = base64ToFloat32(audioData);
+                            audioQueueRef.current.push(pcm);
+                            scheduleAudio();
                         }
 
                         if (serverContent?.interrupted) {
-                            log('Glo Interrupted.');
-                            audioQueueRef.current = [];
-                            isProcessingQueueRef.current = false;
+                            // Only log if we had audio in the queue (actual interruption)
+                            if (audioQueueRef.current.length > 0) {
+                                log('Glo Interrupted (Queue Cleared).');
+                                audioQueueRef.current = [];
+                            }
+                            nextScheduleTimeRef.current = 0;
+                            setVolume(0);
+                        }
+
+                        const geminiErr = response.error || serverContent?.error;
+                        if (geminiErr) {
+                            log(`AI ERROR: ${JSON.stringify(geminiErr)}`);
                         }
                     } catch (err: any) { log(`Msg Parse Error: ${err.message}`); }
                 };
@@ -318,7 +441,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
             setError(err.message || 'Hardware/Link failure.');
             stopSession(true);
         }
-    }, [apiKey, context, stopSession, processAudioQueue, log, updateStatus, isActive]);
+    }, [apiKey, context, stopSession, scheduleAudio, log, updateStatus, isActive]);
 
     return { isActive, startSession, stopSession, volume, micPeak, error, geminiStatus };
 };

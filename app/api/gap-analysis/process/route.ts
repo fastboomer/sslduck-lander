@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { google } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { db } from '@/app/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { extractTextFromFile } from '@/lib/gap-utils';
 import fs from 'fs';
 import path from 'path';
@@ -119,19 +119,26 @@ export async function POST(req: NextRequest) {
 
         // 7. Save to Firestore (Audit Log)
         console.log("[GAP_PROCESS] Saving to Firestore...");
+        const reportId = `gap-${Date.now()}`;
         if (db) {
             try {
-                await addDoc(collection(db, 'gap-reports'), {
+                await setDoc(doc(db, 'gap-reports', reportId), {
+                    reportId,
                     candidateName,
                     jobLink,
                     analysis,
+                    resumeText: combinedResumeText,
+                    jobDescription: combinedReqText,
                     createdAt: new Date().toISOString(),
                     status: 'completed'
                 });
-                console.log("[GAP_PROCESS] Saved to Firestore successfully.");
-            } catch (fsErr) {
+                console.log("[GAP_PROCESS] Saved to Firestore successfully. ID:", reportId);
+            } catch (fsErr: any) {
                 console.error("Firestore Save Error:", fsErr);
+                throw new Error(`Failed to save report to database: ${fsErr.message}`);
             }
+        } else {
+            throw new Error("Database connection unavailable.");
         }
 
         // 8. Send to Webhook (Internal GAP Dispatch)
@@ -164,7 +171,7 @@ export async function POST(req: NextRequest) {
         console.log("[GAP_PROCESS] Entire process completed successfully.");
         return NextResponse.json({
             success: true,
-            reportId: `gap-${Date.now()}`,
+            reportId: reportId,
             candidateName,
             message: "Report processed and dispatched."
         });

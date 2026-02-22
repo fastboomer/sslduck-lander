@@ -6,5 +6,9 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+    match /gap-reports/{reportId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

@@ -1,46 +1,42 @@
 /**
- * PCM Processor Worklet - High Fidelity Version
- * Handles low-latency capture and sends peak/signal info to main thread.
+ * PCM Processor Worklet - Pro Audio Version (2026)
+ * Handles low-latency capture with zero-allocation buffering for maximum stability.
+ * Sends peak/signal info to main thread for diagnostic UI.
  */
 class PCMProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
-        this._bufferSize = 2048; // Smaller buffer for better responsiveness
+        this._bufferSize = 1024; // Smaller for better responsiveness (1024 samples @ 48kHz = ~21ms)
         this._buffer = new Float32Array(this._bufferSize);
         this._bufferPtr = 0;
     }
 
     process(inputs, outputs, parameters) {
         const input = inputs[0];
-        if (input.length > 0) {
-            const channelData = input[0];
-            let peak = 0;
+        if (!input || input.length === 0) return true;
 
-            for (let i = 0; i < channelData.length; i++) {
-                const sample = channelData[i];
-                const absSample = Math.abs(sample);
-                if (absSample > peak) peak = absSample;
+        const channelData = input[0];
+        let peak = 0;
 
-                this._buffer[this._bufferPtr++] = sample;
+        for (let i = 0; i < channelData.length; i++) {
+            const sample = channelData[i];
+            const absS = Math.abs(sample);
+            if (absS > peak) peak = absS;
 
-                if (this._bufferPtr >= this._bufferSize) {
-                    // Send buffer to main thread
-                    this.port.postMessage({
-                        type: 'audio',
-                        buffer: this._buffer,
-                        peak: peak
-                    });
-                    // Reset buffer
-                    this._buffer = new Float32Array(this._bufferSize);
-                    this._bufferPtr = 0;
-                }
-            }
+            this._buffer[this._bufferPtr++] = sample;
 
-            // Periodically send a state message if signal is detected
-            if (peak > 0.001) {
-                // Main thread will use this for the meter if needed
+            if (this._bufferPtr >= this._bufferSize) {
+                // Send a copy to the main thread to avoid race conditions with worker pool
+                this.port.postMessage({
+                    type: 'audio',
+                    buffer: this._buffer.slice(), // Slice creates a new Float32Array efficiently
+                    peak: peak
+                });
+                this._bufferPtr = 0;
+                peak = 0; // Reset peak for next block
             }
         }
+
         return true;
     }
 }

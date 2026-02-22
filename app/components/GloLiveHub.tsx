@@ -21,6 +21,11 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
 
+    // Pre-talk State
+    const [isPreTalk, setIsPreTalk] = useState(false);
+    const [preTalkCaption, setPreTalkCaption] = useState('');
+    const hasPlayedIntroRef = useRef(false);
+
     const addLog = useCallback((msg: string) => {
         console.log(`[GLO_UI] ${msg}`);
         setDebugLogs(prev => {
@@ -53,6 +58,98 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         };
         fetchContext();
     }, [reportId, addLog]);
+
+    // Handle Pre-talk Strategy (3s after context loaded)
+    const introSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
+    useEffect(() => {
+        // Strict guard: return if no context, already active, already connecting, or intro already played/started
+        if (!context || status !== 'IDLE' || isPreTalk || hasPlayedIntroRef.current) return;
+
+        const timer = setTimeout(() => {
+            // Check again at execution time
+            if (hasPlayedIntroRef.current || status !== 'IDLE' || isPreTalk) return;
+
+            const firstName = context.candidateName?.split(' ')[0] || 'there';
+            const text = `Hey ${firstName}, it's Simone! I've forwarded your resume to Glenn. I also have Glo on the line, with comments on your resume profile. If you would like to talk just click the Talk to Glo Button.`;
+
+            // Set flag IMMEDIATELY to prevent ANY other triggers
+            hasPlayedIntroRef.current = true;
+
+            setIsPreTalk(true);
+            setPreTalkCaption(text);
+            addLog("Executing one-time Pre-talk greeting...");
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            introSpeechRef.current = utterance;
+
+            const loadVoiceAndSpeak = () => {
+                // Ensure we only speak once even if event fires multiple times
+                if (window.speechSynthesis.speaking) return;
+
+                const voices = window.speechSynthesis.getVoices();
+
+                // Strict preference for high-quality female voices
+                const femaleVoices = voices.filter(v =>
+                    !v.name.toLowerCase().includes('male') &&
+                    !v.name.toLowerCase().includes('david') &&
+                    !v.name.toLowerCase().includes('mark') &&
+                    !v.name.toLowerCase().includes('james')
+                );
+
+                const preferredVoice =
+                    femaleVoices.find(v => v.name.includes('Google') && v.name.includes('Female')) ||
+                    femaleVoices.find(v => v.name.includes('Samantha')) ||
+                    femaleVoices.find(v => v.name.includes('Aria')) ||
+                    femaleVoices.find(v => v.name.includes('Victoria')) ||
+                    femaleVoices.find(v => v.name.includes('UK English') && v.name.includes('Female')) ||
+                    femaleVoices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female')) ||
+                    femaleVoices[0] ||
+                    voices[0];
+
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                    addLog(`Intro VR: ${preferredVoice.name}`);
+                }
+
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+
+                utterance.onend = () => {
+                    setIsPreTalk(false);
+                    setPreTalkCaption('');
+                    addLog("Pre-talk complete. Satellite link ready.");
+                };
+
+                utterance.onerror = () => {
+                    setIsPreTalk(false);
+                    addLog("Intro speech failed (system block).");
+                };
+
+                window.speechSynthesis.speak(utterance);
+            };
+
+            if (window.speechSynthesis.getVoices().length > 0) {
+                loadVoiceAndSpeak();
+            } else {
+                window.speechSynthesis.onvoiceschanged = () => {
+                    loadVoiceAndSpeak();
+                    window.speechSynthesis.onvoiceschanged = null; // Kill listener after first fire
+                };
+            }
+        }, 3000);
+
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [context, status, isPreTalk, addLog]);
+
+    const skipIntro = useCallback(() => {
+        window.speechSynthesis.cancel();
+        setIsPreTalk(false);
+        setPreTalkCaption('');
+        addLog("Intro skipped by user.");
+    }, [addLog]);
 
     // Mic Management & Pre-flight
     const micMeterRef = useRef<AudioContext | null>(null);
@@ -116,6 +213,8 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     };
 
     const enterPreflight = () => {
+        window.speechSynthesis.cancel(); // Stop pre-talk if user interrupts
+        setIsPreTalk(false);
         setLocalError(null);
         setStatus('PREFLIGHT');
         enumerateMics();
@@ -158,7 +257,10 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     }, [stopSession, addLog]);
 
     useEffect(() => {
-        return () => stopMicResources();
+        return () => {
+            stopMicResources();
+            window.speechSynthesis.cancel();
+        };
     }, [stopMicResources]);
 
     const displayError = geminiError || localError;
@@ -172,12 +274,58 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
             <div className="relative aspect-square md:aspect-[4/3] rounded-[40px] overflow-hidden bg-royal-blue/10 border border-white/20 shadow-2xl glass group">
 
                 <div className="absolute inset-0">
-                    <img
-                        src="https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/glo-3-female-human.png?alt=media&token=0ab75fba-deeb-41c4-b62c-2635057b4a8f"
-                        alt="Glo"
-                        className={`w-full h-full object-cover transition-all duration-1000 ${isActive ? 'scale-105 brightness-110' : 'grayscale-[20%] brightness-90'}`}
-                    />
-                    <AudioAura isActive={isActive} volume={volume} />
+                    {/* Background: Graphic vs Photo */}
+                    <AnimatePresence mode="wait">
+                        {isPreTalk || isActive ? (
+                            <motion.img
+                                key="photo"
+                                initial={{ opacity: 0, scale: 1.1 }}
+                                animate={{ opacity: 1, scale: 1.05 }}
+                                exit={{ opacity: 0, scale: 1.1 }}
+                                src="https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/glo-3-female-human.png?alt=media&token=0ab75fba-deeb-41c4-b62c-2635057b4a8f"
+                                alt="Glo"
+                                className={`w-full h-full object-cover brightness-110`}
+                            />
+                        ) : (
+                            <motion.div
+                                key="graphic"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="w-full h-full bg-slate-900 flex items-center justify-center"
+                            >
+                                <div className="text-royal-blue/20">
+                                    <Sparkles size={120} className="animate-pulse" />
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                    <AudioAura isActive={isActive || isPreTalk} volume={isPreTalk ? 0.3 : volume} />
+
+                    <AnimatePresence>
+                        {isPreTalk && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 1.05 }}
+                                className="absolute inset-0 z-30 flex items-center justify-center p-8 pointer-events-none"
+                            >
+                                <div className="bg-black/70 backdrop-blur-xl p-8 rounded-[40px] border border-white/20 shadow-[0_30px_100px_rgba(0,0,0,0.8)] max-w-sm pointer-events-auto">
+                                    <p className="text-white text-xl font-serif italic text-center leading-relaxed mb-8">
+                                        {preTalkCaption}
+                                    </p>
+                                    <div className="flex justify-center">
+                                        <button
+                                            onClick={skipIntro}
+                                            className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold uppercase tracking-[0.2em] px-6 py-2 rounded-full transition-all flex items-center gap-3 border border-white/10 active:scale-95"
+                                        >
+                                            <X size={14} /> Skip Intro
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-6 z-10">
                         <div className="flex items-center justify-between">
@@ -188,6 +336,8 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                                 <p className="text-white/60 text-xs font-medium uppercase tracking-widest flex items-center gap-2">
                                     {isActive ? (
                                         <> <Zap size={10} className="text-emerald-400" /> HD Live Link Active </>
+                                    ) : isPreTalk ? (
+                                        <> <Sparkles size={10} className="text-royal-blue animate-spin" /> Satellite Transmission... </>
                                     ) : status === 'CONNECTING' ? (
                                         <> <Loader2 size={10} className="animate-spin" /> Handshaking... </>
                                     ) : status === 'ERROR' ? (
@@ -209,17 +359,17 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                 </div>
 
                 <AnimatePresence>
-                    {status === 'IDLE' && (
+                    {(status === 'IDLE' && !isPreTalk) && (
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm gap-4 z-20"
+                            className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 backdrop-blur-[2px] gap-4 z-20"
                         >
                             <button
                                 onClick={enterPreflight}
                                 className="group relative bg-white text-royal-blue px-10 py-5 rounded-full font-bold text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
                             >
                                 <Mic size={28} className="group-hover:animate-bounce" />
-                                Start AI Link
+                                Talk to Glo
                                 <div className="absolute -inset-2 bg-white/20 rounded-full blur animate-ping pointer-events-none" />
                             </button>
                             {displayError && (
@@ -334,11 +484,6 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                             <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-gray-300'}`} />
                             Live Signal Monitors
                         </span>
-                        <div className="flex gap-2 text-[8px] font-bold text-gray-400">
-                            <span className={isActive ? 'text-emerald-500' : ''}>PCM_CAPTURE</span>
-                            <span>|</span>
-                            <span className={isActive ? 'text-blue-500' : ''}>WSS_STREAM</span>
-                        </div>
                     </div>
 
                     <div className="space-y-4">
