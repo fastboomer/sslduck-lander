@@ -271,7 +271,7 @@ export const OmniFeed: React.FC = () => {
 
     const handleAuth = (e: React.FormEvent) => {
         e.preventDefault();
-        if (passwordInput === 'sslduck2026') {
+        if (passwordInput === 'password2026') {
             setIsAdminAuthenticated(true);
         } else {
             alert('Access Denied');
