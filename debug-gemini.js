@@ -3,7 +3,10 @@ const { google } = require('@ai-sdk/google');
 const { generateText } = require('ai');
 
 async function test() {
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'AIzaSyCYhZAXaX6yjDvhJC9uOUBf30Wh4o7T3FU';
+    // Fetched from environment
+    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
+    if (!apiKey) throw new Error("API Key missing from environment.");
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = apiKey;
 
     try {
         console.log("Testing Gemini 1.5 Flash...");

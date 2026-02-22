@@ -1,4 +1,8 @@
-const apiKey = 'AIzaSyA0mWgmLpXFshAzKCVkA7wnqJIhsY2SSH4';
+const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
+if (!apiKey) {
+    console.error("❌ Error: Set GOOGLE_GENERATIVE_AI_API_KEY environment variable.");
+    process.exit(1);
+}
 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
 const data = {
