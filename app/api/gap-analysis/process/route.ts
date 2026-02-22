@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = "force-dynamic";
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { db } from '@/app/lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
@@ -10,6 +10,12 @@ import path from 'path';
 
 export async function POST(req: NextRequest) {
     console.log("[GAP_PROCESS] Request received.");
+
+    // Explicit Provider Setup (fixes Vercel env sensing issues)
+    const googleAI = createGoogleGenerativeAI({
+        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY,
+    });
+
     try {
         const formData = await req.formData();
         const resumes = formData.getAll('resumes') as File[];
@@ -47,7 +53,7 @@ export async function POST(req: NextRequest) {
         if (!jobLink && combinedReqText) {
             try {
                 const { text: summary } = await generateText({
-                    model: google('gemini-2.0-flash-001'),
+                    model: googleAI('gemini-2.0-flash-001'),
                     prompt: `Summarize this job description into one short sentence (e.g., 'Senior Dev Role at Acme Corp'):\n\n${combinedReqText.substring(0, 1000)}`,
                 });
                 jobLink = summary.trim();
@@ -77,12 +83,12 @@ export async function POST(req: NextRequest) {
         let analysis = '';
 
         const tools: any = {
-            search: google.tools.googleSearch({}),
+            search: googleAI.tools.googleSearch({}),
         };
 
         try {
             const { text } = await generateText({
-                model: google('gemini-1.5-pro-002'),
+                model: googleAI('gemini-1.5-pro-002'),
                 tools,
                 prompt: finalPrompt,
             });
@@ -91,7 +97,7 @@ export async function POST(req: NextRequest) {
             console.error("Gemini 1.5 Pro failed, trying 2.0 Flash...", proErr.message);
             try {
                 const { text } = await generateText({
-                    model: google('gemini-2.0-flash-001'),
+                    model: googleAI('gemini-2.0-flash-001'),
                     tools,
                     prompt: finalPrompt,
                 });
@@ -109,7 +115,7 @@ export async function POST(req: NextRequest) {
         let candidateName = "Candidate";
         try {
             const { text: nameExtraction } = await generateText({
-                model: google('gemini-2.0-flash-001'),
+                model: googleAI('gemini-2.0-flash-001'),
                 prompt: `Extract the candidate's full name from this resume text. Return ONLY the name:\n\n${combinedResumeText.substring(0, 1000)}`,
             });
             candidateName = nameExtraction.trim() || "Candidate";
