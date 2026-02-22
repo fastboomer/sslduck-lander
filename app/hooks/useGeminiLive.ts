@@ -324,8 +324,8 @@ Candidate Name: ${context?.candidateName || 'the candidate'}
                                     const timeSinceGloSpoke = Date.now() - lastGloSpeechTimeRef.current;
                                     if (timeSinceGloSpoke < 500) return;
 
-                                    // Increased Noise Gate to 0.015 to ignore higher-volume background/echo noise
-                                    if (peak < 0.015) return;
+                                    // Calibrated Noise Gate to 0.010 (Balanced for sensitivity vs echo-suppression)
+                                    if (peak < 0.010) return;
 
                                     const resampledData = resample(rawData, nativeRate, 16000);
                                     const { base64 } = floatTo16BitPCM(resampledData);
