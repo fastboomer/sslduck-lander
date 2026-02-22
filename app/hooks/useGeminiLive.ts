@@ -313,7 +313,7 @@ Candidate Name: ${context?.candidateName || 'the candidate'}
                                     }));
                                     log('Kickstart sent (Strategic).');
                                 }
-                            }, 500);
+                            }, 100);
 
                             let sentChunks = 0;
                             const handleInputBuffer = (rawData: Float32Array, peak: number) => {

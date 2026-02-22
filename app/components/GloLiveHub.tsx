@@ -148,6 +148,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         window.speechSynthesis.cancel();
         setIsPreTalk(false);
         setPreTalkCaption('');
+        hasPlayedIntroRef.current = true; // Block re-trigger
         addLog("Intro skipped by user.");
     }, [addLog]);
 
@@ -237,6 +238,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         setLocalError(null);
         addLog("AI handshake initiated...");
         setStatus('CONNECTING');
+        hasPlayedIntroRef.current = true; // Block intro if user starts session early
         await startGemini(selectedDeviceId);
     };
 
