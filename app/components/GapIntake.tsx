@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileUp, Link, Type, X, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { FileUp, Link as LinkIcon, Type, X, CheckCircle2, Loader2, AlertCircle, Info } from 'lucide-react';
 
 interface GapIntakeProps {
     onSuccess: (data: { reportId: string }) => void;
@@ -10,10 +10,13 @@ interface GapIntakeProps {
 
 export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
     const [resumes, setResumes] = useState<File[]>([]);
+    const [resumeMode, setResumeMode] = useState<'upload' | 'paste'>('upload');
+    const [resumeText, setResumeText] = useState('');
     const [reqMode, setReqMode] = useState<'upload' | 'url' | 'text'>('text');
     const [reqFiles, setReqFiles] = useState<File[]>([]);
     const [reqUrl, setReqUrl] = useState('');
     const [reqText, setReqText] = useState('');
+    const [contactEmail, setContactEmail] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -55,8 +58,12 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         console.log("[DEBUG] GapIntake submission started. Version: 10");
         e.preventDefault();
-        if (resumes.length === 0) {
+        if (resumeMode === 'upload' && resumes.length === 0) {
             setError("Please upload at least one resume.");
+            return;
+        }
+        if (resumeMode === 'paste' && resumeText.trim() === '') {
+            setError("Please paste your resume text.");
             return;
         }
 
@@ -75,6 +82,8 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
             reqFiles.forEach(f => formData.append('reqFiles', f));
             formData.append('reqUrl', reqUrl);
             formData.append('reqText', reqText);
+            formData.append('contactEmail', contactEmail);
+            formData.append('resumeText', resumeText); // Paster resume content
 
             console.log("[DEBUG] Sending request to /api/gap-analysis/process...");
             const response = await fetch('/api/gap-analysis/process', {
@@ -82,15 +91,30 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
                 body: formData
             });
 
+            const responseText = await response.text();
+            console.log("[DEBUG] Raw Response received length:", responseText.length);
+
             if (!response.ok) {
-                const errorData = await response.json();
-                console.error("[DEBUG] API Error:", errorData);
-                throw new Error(errorData.error || "Processing failed. Please try again.");
+                let errorMsg = "Processing failed.";
+                try {
+                    const errorData = JSON.parse(responseText);
+                    errorMsg = errorData.error || errorMsg;
+                } catch (e) {
+                    errorMsg = `Server error (${response.status}): The server returned a webpage instead of data. This often means a crash or timeout.`;
+                    console.error("[DEBUG] Non-JSON error response detected:", responseText.substring(0, 200));
+                }
+                throw new Error(errorMsg);
             }
 
-            const result = await response.json();
-            console.log("[DEBUG] Success! Redirecting to success page with ID:", result.reportId);
-            onSuccess(result);
+            let result;
+            try {
+                result = JSON.parse(responseText);
+                console.log("[DEBUG] Success! Redirecting to success page with ID:", result.reportId);
+                onSuccess(result);
+            } catch (e) {
+                console.error("[DEBUG] JSON parse failure on success:", e);
+                throw new Error("Invalid response format from server. Please check terminal logs.");
+            }
         } catch (err: any) {
             console.error("[DEBUG] Submit error:", err);
             setError(err.message || "An unexpected error occurred.");
@@ -104,35 +128,87 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
             <h2 className="text-3xl font-serif font-bold text-royal-blue mb-8 text-center italic">Free GAP Analysis Intake (v12)</h2>
 
             <form onSubmit={handleSubmit} className="space-y-10">
+                {/* Personal Information Removed for Frictionless Intake */}
+
                 {/* Resume Section */}
                 <div className="space-y-4">
-                    <label className="text-sm font-bold text-royal-blue uppercase tracking-widest flex items-center gap-2">
-                        <FileUp size={18} /> Your Resume(s) <span className="text-red-500">*</span>
-                    </label>
-                    <div
-                        className="border-2 border-dashed border-royal-blue/30 rounded-2xl p-8 text-center transition-all shadow-inner"
-                        style={{ backgroundColor: '#f0f7ff' }}
-                    >
-                        <input
-                            type="file"
-                            ref={resumeRef}
-                            onChange={handleResumeUpload}
-                            className="hidden"
-                            multiple
-                            accept=".pdf,.doc,.docx,.txt"
-                        />
-                        <div className="flex flex-col items-center gap-4">
-                            <p className="text-royal-blue/60 font-sans font-medium">Drag & Drop Resumes Here</p>
+                    <div className="flex bg-royal-blue/5 rounded-full p-1 border border-royal-blue/10 w-fit mx-auto">
+                        {(['upload', 'paste'] as const).map(mode => (
                             <button
+                                key={mode}
                                 type="button"
-                                onClick={() => resumeRef.current?.click()}
-                                className="bg-white hover:bg-royal-blue/5 text-royal-blue px-8 py-3 rounded-full text-xs font-bold transition-all border border-royal-blue/10 shadow-sm"
+                                onClick={() => {
+                                    if (resumeMode === 'upload' && mode === 'upload') {
+                                        resumeRef.current?.click();
+                                    } else {
+                                        setResumeMode(mode);
+                                    }
+                                }}
+                                className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all flex items-center gap-2 ${resumeMode === mode
+                                    ? 'bg-royal-blue text-white shadow-lg'
+                                    : 'text-royal-blue/60 hover:text-royal-blue'
+                                    }`}
                             >
-                                Browse Files
+                                {mode === 'upload' && <FileUp size={14} />}
+                                {mode}
                             </button>
-                        </div>
-                        <p className="text-[10px] text-royal-blue/40 mt-4 uppercase tracking-tighter">Maximum 2 files (PDF, DOCX, TXT)</p>
+                        ))}
                     </div>
+
+                    <AnimatePresence mode="wait">
+                        {resumeMode === 'upload' ? (
+                            <motion.div
+                                key="upload"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="border-2 border-dashed border-royal-blue/40 rounded-2xl p-4 text-center transition-all shadow-inner"
+                                style={{ backgroundColor: '#edf2f7' }}
+                            >
+                                <input
+                                    type="file"
+                                    ref={resumeRef}
+                                    onChange={handleResumeUpload}
+                                    className="hidden"
+                                    multiple
+                                    accept=".pdf,.doc,.docx,.txt"
+                                />
+                                <div className="flex flex-col items-center gap-4">
+                                    <p className="text-royal-blue/60 font-sans font-medium">Drag & Drop Resumes Here</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => resumeRef.current?.click()}
+                                        className="bg-white hover:bg-royal-blue/5 text-royal-blue px-8 py-3 rounded-full text-xs font-bold transition-all border border-royal-blue/10 shadow-sm"
+                                    >
+                                        Browse Files
+                                    </button>
+                                </div>
+                                <div className="mt-4 space-y-2">
+                                    <p className="text-[10px] text-royal-blue/40 uppercase tracking-tighter">Maximum 2 files (PDF, DOCX, TXT)</p>
+                                    <div className="flex items-center justify-center gap-2 bg-yellow-50 p-2 rounded-lg border border-yellow-100">
+                                        <Info size={12} className="text-yellow-600 shrink-0" />
+                                        <p className="text-[9px] text-yellow-700 font-medium leading-tight">
+                                            <strong>USING ONEDRIVE?</strong> Ensure your file has a <span className="text-emerald-600 font-bold">green checkmark</span> before uploading, or toggle to "Paste" mode above if you encounter errors.
+                                        </p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="paste"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                            >
+                                <textarea
+                                    value={resumeText}
+                                    onChange={(e) => setResumeText(e.target.value)}
+                                    className="w-full bg-white border border-royal-blue/10 p-4 rounded-2xl min-h-[200px] outline-none focus:ring-2 focus:ring-royal-blue/20 font-sans text-sm"
+                                    placeholder="Paste your resume text here if you have trouble uploading files..."
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     <div className="flex flex-wrap gap-2">
                         {resumes.map((file, i) => (
@@ -159,18 +235,30 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
                     <label className="text-sm font-bold text-royal-blue uppercase tracking-widest flex items-center gap-2">
                         <Type size={18} /> Job Requirements <span className="text-red-500">*</span>
                     </label>
+                    <p className="text-[10px] text-royal-blue/50 font-medium leading-relaxed">
+                        <span className="text-red-500 font-bold">WARNING:</span> Ensure you include the **Employer Name** and **Location** in your paste or upload. Limited data restricts Glo's ability to research the specific company culture and financials.
+                    </p>
 
                     <div className="flex bg-royal-blue/5 rounded-full p-1 border border-royal-blue/10 w-fit mx-auto">
                         {(['text', 'url', 'upload'] as const).map(mode => (
                             <button
                                 key={mode}
                                 type="button"
-                                onClick={() => setReqMode(mode)}
-                                className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${reqMode === mode
+                                onClick={() => {
+                                    if (reqMode === 'upload' && mode === 'upload') {
+                                        reqFileRef.current?.click();
+                                    } else {
+                                        setReqMode(mode);
+                                    }
+                                }}
+                                className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all flex items-center gap-2 ${reqMode === mode
                                     ? 'bg-royal-blue text-white shadow-lg'
                                     : 'text-royal-blue/60 hover:text-royal-blue'
                                     }`}
                             >
+                                {mode === 'upload' && <FileUp size={14} />}
+                                {mode === 'url' && <LinkIcon size={14} />}
+                                {mode === 'text' && <Type size={14} />}
                                 {mode}
                             </button>
                         ))}
@@ -185,8 +273,8 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
                                 exit={{ opacity: 0, y: -10 }}
                                 value={reqText}
                                 onChange={(e) => setReqText(e.target.value)}
-                                className="w-full bg-white border border-royal-blue/10 p-4 rounded-2xl min-h-[200px] outline-none focus:ring-2 focus:ring-royal-blue/20 font-sans text-sm"
-                                placeholder="Paste the job description here..."
+                                className="w-full bg-white border border-royal-blue/10 p-4 rounded-2xl min-h-[350px] outline-none focus:ring-2 focus:ring-royal-blue/20 font-sans text-sm"
+                                placeholder="..."
                             />
                         )}
                         {reqMode === 'url' && (
@@ -197,7 +285,7 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
                                 exit={{ opacity: 0, y: -10 }}
                                 className="relative"
                             >
-                                <Link className="absolute left-4 top-1/2 -translate-y-1/2 text-royal-blue/40" size={18} />
+                                <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-royal-blue/40" size={18} />
                                 <input
                                     type="url"
                                     value={reqUrl}
@@ -216,7 +304,7 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
                                 className="space-y-4"
                             >
                                 <div
-                                    className="border-2 border-dashed border-royal-blue/20 rounded-2xl p-8 text-center transition-all bg-white shadow-inner"
+                                    className="border-2 border-dashed border-royal-blue/40 rounded-2xl p-8 text-center transition-all bg-royal-blue/5 shadow-inner"
                                 >
                                     <input
                                         type="file"
@@ -259,6 +347,20 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
                             </motion.div>
                         )}
                     </AnimatePresence>
+                </div>
+
+                {/* Email Section */}
+                <div className="space-y-4">
+                    <label className="text-sm font-bold text-royal-blue uppercase tracking-widest flex items-center gap-2">
+                        <AlertCircle size={18} /> Contact Email (Optional)
+                    </label>
+                    <input
+                        type="email"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        className="w-full bg-white border border-royal-blue/10 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-royal-blue/20 font-sans text-sm"
+                        placeholder="prospect@example.com (To ensure your report arrives if contact info is missing from resume)"
+                    />
                 </div>
 
                 {error && (

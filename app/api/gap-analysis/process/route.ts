@@ -1,29 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
+console.log("[GAP_ROUTE] Module Loaded");
 export const dynamic = "force-dynamic";
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { db } from '@/app/lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
-import { extractTextFromFile } from '@/lib/gap-utils';
+import { extractTextFromFile, createGapDoc } from '@/lib/gap-utils';
+import { sendGapReport } from '@/app/lib/mail';
 import fs from 'fs';
 import path from 'path';
 
 export async function POST(req: NextRequest) {
+    const logPath = path.join(process.cwd(), 'debug-api-log.txt');
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] Request received\n`);
     console.log("[GAP_PROCESS] Request received.");
 
-    // Explicit Provider Setup (fixes Vercel env sensing issues)
-    const googleAI = createGoogleGenerativeAI({
-        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY,
-    });
-
     try {
+        // 0. Setup Provider (Inside try to catch config errors)
+        const googleAI = createGoogleGenerativeAI({
+            apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY,
+        });
+
         const formData = await req.formData();
         const resumes = formData.getAll('resumes') as File[];
         const reqFiles = formData.getAll('reqFiles') as File[];
         const reqUrl = formData.get('reqUrl') as string;
         const reqText = formData.get('reqText') as string;
+        const contactEmail = formData.get('contactEmail') as string;
+        const resumeText = formData.get('resumeText') as string || '';
 
-        if (resumes.length === 0) throw new Error("No resumes uploaded.");
+        if (resumes.length === 0 && !resumeText.trim()) throw new Error("No resume provided (Upload or Paste required).");
 
         // 1. Extract Text
         console.log("[GAP_PROCESS] Extracting text from files...");
@@ -36,6 +42,10 @@ export async function POST(req: NextRequest) {
         } catch (extractErr: any) {
             console.error("Extraction failed:", extractErr);
             throw new Error(`Text extraction failed: ${extractErr.message}`);
+        }
+
+        if (resumeText.trim()) {
+            combinedResumeText += resumeText + '\n\n';
         }
 
         let combinedReqText = reqText || '';
@@ -63,10 +73,13 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        const targetCompany = jobLink.split(' at ')[1] || jobLink;
+        const targetJobTitle = jobLink.split(' at ')[0] || jobLink;
+
         // 3. Load Prompt Templates
         console.log("[GAP_PROCESS] Loading prompt templates...");
-        const promptPath = path.join(process.cwd(), 'GAP-INSTRUCTIONS', 'gap-analysis-prompt.md');
-        const examplePath = path.join(process.cwd(), 'GAP-INSTRUCTIONS', 'gap-example.md');
+        const promptPath = path.join(process.cwd(), 'AI-BRIEFS', 'report-prompts', 'gap-analysis-instructions.md');
+        const examplePath = path.join(process.cwd(), 'AI-BRIEFS', 'report-prompts', 'gap-report-example.md');
 
         if (!fs.existsSync(promptPath)) throw new Error("Prompt template missing.");
         let promptTemplate = fs.readFileSync(promptPath, 'utf8');
@@ -74,22 +87,20 @@ export async function POST(req: NextRequest) {
 
         // 4. Prepare Final Prompt
         const finalPrompt = promptTemplate
+            .replace(/\[first_name\]/g, "Candidate") // Defaulting placeholder
+            .replace(/\[job_title\]/g, targetJobTitle)
+            .replace(/\[target_company\]/g, targetCompany)
             .replace(/<requirements>[\s\S]*?<\/requirements>/, `<requirements>\n${combinedReqText}\n</requirements>`)
             .replace(/<resume>[\s\S]*?<\/resume>/, `<resume>\n${combinedResumeText}\n</resume>`)
             .replace(/<example>[\s\S]*?<\/example>/, `<example>\n${exampleTemplate}\n</example>`);
 
         // 5. Execute AI (Pro with Flash fallback)
-        console.log("[GAP_PROCESS] Executing GAP Analysis with Google Search Grounding...");
+        console.log("[GAP_PROCESS] Executing GAP Analysis...");
         let analysis = '';
-
-        const tools: any = {
-            search: googleAI.tools.googleSearch({}),
-        };
 
         try {
             const { text } = await generateText({
                 model: googleAI('gemini-1.5-pro-002'),
-                tools,
                 prompt: finalPrompt,
             });
             analysis = text;
@@ -98,7 +109,6 @@ export async function POST(req: NextRequest) {
             try {
                 const { text } = await generateText({
                     model: googleAI('gemini-2.0-flash-001'),
-                    tools,
                     prompt: finalPrompt,
                 });
                 analysis = text;
@@ -174,6 +184,46 @@ export async function POST(req: NextRequest) {
             console.error("Failed to send to webhook:", webhookErr.message);
         }
 
+        // 9. Generate Word Document and Save to GAP-USERS
+        console.log("[GAP_PROCESS] Generating Word document...");
+        try {
+            const docBuffer = await createGapDoc(analysis, targetCompany);
+
+            // Generate Filename from candidateName
+            const safeName = candidateName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+            const timestamp = Date.now().toString().slice(-6);
+            const filename = `gap-${safeName || 'report'}-${timestamp}`;
+
+            const gapUsersDir = path.join(process.cwd(), 'GAP-USERS');
+
+            if (!fs.existsSync(gapUsersDir)) {
+                console.log("[GAP_PROCESS] Creating GAP-USERS directory...");
+                fs.mkdirSync(gapUsersDir, { recursive: true });
+            }
+
+            const filePath = path.join(gapUsersDir, `${filename}.docx`);
+
+            fs.writeFileSync(filePath, docBuffer);
+            console.log("[GAP_PROCESS] Saved Word report to:", filePath);
+
+            // 9.1 Save AI-ready Markdown version
+            const mdFilePath = path.join(process.cwd(), 'GAP-USERS', `${filename}.md`);
+            fs.writeFileSync(mdFilePath, analysis);
+            console.log("[GAP_PROCESS] Saved AI-ready Markdown to:", mdFilePath);
+
+            // 10. Email to Glenn
+            console.log("[GAP_PROCESS] Emailing report to Glenn...");
+            await sendGapReport('glenn@sslduck.net', candidateName, docBuffer, filename);
+
+            // Also email to user if they provided one
+            if (contactEmail && contactEmail.includes('@')) {
+                console.log("[GAP_PROCESS] Emailing copy to user:", contactEmail);
+                await sendGapReport(contactEmail, candidateName, docBuffer, filename);
+            }
+        } catch (exportErr: any) {
+            console.error("[GAP_PROCESS] Export/Email failed:", exportErr);
+        }
+
         console.log("[GAP_PROCESS] Entire process completed successfully.");
         return NextResponse.json({
             success: true,
@@ -183,6 +233,8 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
+        const logPath = path.join(process.cwd(), 'debug-api-log.txt');
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] CRITICAL ERROR: ${error.message}\n${error.stack}\n`);
         console.error("[GAP_PROCESS] CRITICAL ERROR:", error);
         return NextResponse.json(
             {

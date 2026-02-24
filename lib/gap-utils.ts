@@ -35,6 +35,39 @@ export async function extractTextFromFile(file: File): Promise<string> {
 }
 
 export async function createGapDoc(analysis: string, companyName: string): Promise<Buffer> {
+    const sections = analysis.split('\n').map(line => {
+        if (line.trim() === '') return new Paragraph({ text: '' });
+
+        // Handle Headers
+        if (line.startsWith('# ')) {
+            return new Paragraph({ text: line.replace('# ', ''), heading: HeadingLevel.HEADING_1, spacing: { before: 400, after: 200 } });
+        } else if (line.startsWith('## ')) {
+            return new Paragraph({ text: line.replace('## ', ''), heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 150 } });
+        } else if (line.startsWith('### ')) {
+            return new Paragraph({ text: line.replace('### ', ''), heading: HeadingLevel.HEADING_3, spacing: { before: 200, after: 100 } });
+        }
+
+        // Simple Bold Parsing: **text**
+        const children: TextRun[] = [];
+        const parts = line.split(/(\*\*.*?\*\*)/);
+
+        parts.forEach(part => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                children.push(new TextRun({
+                    text: part.slice(2, -2),
+                    bold: true
+                }));
+            } else {
+                children.push(new TextRun(part));
+            }
+        });
+
+        return new Paragraph({
+            children,
+            spacing: { after: 120 }
+        });
+    });
+
     const doc = new Document({
         sections: [{
             properties: {},
@@ -42,25 +75,13 @@ export async function createGapDoc(analysis: string, companyName: string): Promi
                 new Paragraph({
                     text: `GAP Analysis: ${companyName}`,
                     heading: HeadingLevel.HEADING_1,
+                    spacing: { after: 400 }
                 }),
                 new Paragraph({
                     text: `Generated on ${new Date().toLocaleDateString()}`,
                     spacing: { after: 400 },
                 }),
-                ...analysis.split('\n').map(line => {
-                    if (line.trim() === '') return new Paragraph({ text: '' });
-
-                    if (line.startsWith('### ')) {
-                        return new Paragraph({ text: line.replace('### ', ''), heading: HeadingLevel.HEADING_3 });
-                    } else if (line.startsWith('## ')) {
-                        return new Paragraph({ text: line.replace('## ', ''), heading: HeadingLevel.HEADING_2 });
-                    }
-
-                    return new Paragraph({
-                        children: [new TextRun(line)],
-                        spacing: { after: 200 }
-                    });
-                })
+                ...sections
             ],
         }],
     });

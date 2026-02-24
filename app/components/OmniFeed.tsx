@@ -18,6 +18,7 @@ import {
     orderBy,
     setDoc
 } from 'firebase/firestore';
+import { GapCircleCTA } from './GapCircleCTA';
 
 interface Article {
     id: string;
@@ -874,6 +875,9 @@ export const OmniFeed: React.FC = () => {
                                     <p className="mt-8 text-sm italic text-royal-blue/40 border-t border-royal-blue/5 pt-4">
                                         Note: This editorial supports embedded media and specialized formatting via HTML.
                                     </p>
+
+                                    {/* Circular GAP CTA */}
+                                    <GapCircleCTA />
                                 </article>
 
                                 {selectedArticle.imageUrl2 && (

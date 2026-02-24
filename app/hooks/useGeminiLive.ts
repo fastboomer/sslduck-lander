@@ -267,13 +267,27 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                             },
                             systemInstruction: {
                                 parts: [{
-                                    text: `You are Glo, a high-performing career strategist. STRICT MODALITY RULE: Output ONLY audio. No text or thoughts. 
-                                
-You must lead the conversation with strategic confidence. Listen carefully to the candidate and respond with insightful career advice.
+                                    text: `${context?.gloPersona || 'You are Glo, a high-performing career strategist.'}
 
-Context: ${context?.analysis || 'Evaluation'}
-Target: ${context?.jobDescription || 'Professional Role'}
-Candidate Name: ${context?.candidateName || 'the candidate'}
+${context?.gloAudioInstructions || 'Follow your strategic conversation script.'}
+
+${context?.gloFacts ? `### FACTUAL REFERENCE DATA\n${context.gloFacts}` : ''}
+
+### DATA MAPPING FOR VARIABLES
+To follow the script in 'glo-audio-discussion.md', map the following data to the bracketed variables:
+- **[first_name]**: Use "${context?.candidateName?.split(' ')[0] || 'Candidate'}".
+- **[job_title]**: Use "${context?.jobLink || 'Target Role'}".
+- **[target_company]**: Infer this from the Job Description or Analysis.
+- **[trait-1, 2, 3]**: Extract the 3 most important employer requirements from the **Evaluation Analysis** below.
+- **[trait_1, 2, 3]**: Extract the 3 best matching traits from the resume/analysis that match the above requirements.
+
+### SESSION DATA
+- **Full Candidate Name**: ${context?.candidateName || 'the candidate'}
+- **Target Role/Title**: ${context?.jobLink || 'Professional Role'}
+- **Job Description Snippet**: ${context?.jobDescription?.substring(0, 1000) || 'See analysis for requirements.'}
+- **Evaluation Analysis (Source for Traits)**: ${context?.analysis || 'Analysis pending.'}
+
+STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the persona and script provided.
 `
                                 }]
                             }
