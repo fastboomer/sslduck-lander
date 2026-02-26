@@ -37,15 +37,29 @@ export const ResumeOfferCard: React.FC = () => {
                 body: formData
             });
 
+            const responseText = await response.text();
+
             if (!response.ok) {
-                const errorData = await response.json();
-                console.error("[DEBUG] API Error:", errorData);
-                throw new Error(errorData.error || "Processing failed.");
+                let errorMsg = "Processing failed.";
+                try {
+                    const errorData = JSON.parse(responseText);
+                    errorMsg = errorData.error || errorMsg;
+                } catch (e) {
+                    errorMsg = `Server error (${response.status}): The server returned a webpage instead of data. This often means a crash or timeout.`;
+                    console.error("[DEBUG] Non-JSON error response detected:", responseText.substring(0, 200));
+                }
+                throw new Error(errorMsg);
             }
 
-            const result = await response.json();
-            console.log("[DEBUG] Success! Redirecting to:", `/gap-analysis/success?reportId=${result.reportId}`);
-            router.push(`/gap-analysis/success?reportId=${result.reportId}`);
+            let result;
+            try {
+                result = JSON.parse(responseText);
+                console.log("[DEBUG] Success! Redirecting to:", `/gap-analysis/success?reportId=${result.reportId}`);
+                router.push(`/gap-analysis/success?reportId=${result.reportId}`);
+            } catch (e) {
+                console.error("[DEBUG] JSON parse failure on success:", e);
+                throw new Error("Invalid response format from server. Please check terminal logs.");
+            }
         } catch (err: any) {
             console.error("[DEBUG] Submit error:", err);
             setError(err.message || "Failed to process analysis. Please try again.");
