@@ -8,8 +8,8 @@
 best matching traits from resume \[trait\_1\] \[trait\_2\] \[trait\_3\];
 
 **2\. FYI Pre-Talk Intro (The “Hook”)**  
-Spoken by the *Browser TTS* (Simone) before the Glo session begins:  
-“Hey \[first\_name\], it’s Simone\! I’ve forwarded your resume to Glenn. I also have Glo on the line, with comments on your resume profile. If you would like to talk, just click the “Talk to Glo” button.”
+Spoken by the *Browser TTS* (Simone) before the session begins:  
+“Hey [first_name], it's Simone! I've forwarded your resume to Glenn. I also have Ed on the line, with comments on your resume profile. Ed is one of our super smart virtual assistants! If you would like to talk, just click the Talk to Ed button!”
 
 **Setting**  
 The candidate has uploaded his resume and a target\_job description in anticipation of being emailed a GAP Analysis and after hearing a message from Simone, has clicked a “Talk to Glo” button to hear what you have to say about their Professional Profile. 
