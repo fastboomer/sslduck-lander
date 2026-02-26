@@ -79,7 +79,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
     // Pro Audio State
     const audioQueueRef = useRef<Float32Array[]>([]);
     const nextScheduleTimeRef = useRef<number>(0);
-    const jitterBufferThreshold = 3; // Increased to 3 chunks to prevent crackling from network jitter
+    const jitterBufferThreshold = 6; // Increased from 3 to 6 to prevent static/crackling from network jitter
 
     const statusRef = useRef<string>('IDLE');
     const handshakeTimeoutRef = useRef<any>(null);
@@ -152,8 +152,8 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
 
             // If we've fallen behind (gap in network), reset schedule time
             if (nextScheduleTimeRef.current < now) {
-                // Buffer by 50ms to allow for browser processing jitter
-                nextScheduleTimeRef.current = now + 0.05;
+                // Buffer by 150ms to allow for browser processing jitter and avoid static
+                nextScheduleTimeRef.current = now + 0.15;
             }
 
             // Connect to persistent gain node (which connects to analyser and destination)
@@ -182,6 +182,11 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
         rafId = requestAnimationFrame(updateMeter);
         return () => cancelAnimationFrame(rafId);
     }, []);
+
+    const reset = useCallback(() => {
+        setError(null);
+        updateStatus('IDLE');
+    }, [updateStatus]);
 
     const startSession = useCallback(async (selectedDeviceId?: string) => {
         if (!apiKey) { log('API Key missing.'); setError('API Key missing.'); return; }
@@ -246,58 +251,100 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
             updateStatus('CONNECTING_WS');
             const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
+            // Connection Watchdog
+            const connectionTimeout = setTimeout(() => {
+                if (wsRef.current?.readyState !== WebSocket.OPEN && statusRef.current === 'CONNECTING_WS') {
+                    log('Watchdog: WebSocket failed to reach OPEN state in 5s.');
+                    setError('Connection timed out. Check network or API key permissions.');
+                    stopSession(true);
+                }
+            }, 5000);
+
             const setupWsListeners = (ws: WebSocket) => {
                 ws.onopen = () => {
+                    clearTimeout(connectionTimeout);
                     if (wsRef.current !== ws) return;
                     updateStatus('HANDSHAKING');
                     log('WebSocket Open. Sending Setup (Glo 2.0)...');
 
                     ws.send(JSON.stringify({
                         setup: {
-                            model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
+                            model: 'models/gemini-2.5-flash-native-audio-latest',
                             generationConfig: {
                                 responseModalities: ['AUDIO'],
                                 speechConfig: {
                                     voiceConfig: {
                                         prebuiltVoiceConfig: {
-                                            voiceName: 'Aoede'
+                                            voiceName: 'Charon'
                                         }
                                     }
                                 }
                             },
                             systemInstruction: {
                                 parts: [{
-                                    text: `${context?.gloPersona || 'You are Glo, a high-performing career strategist.'}
+                                    text: `You are Ed. A strong, professional, authoritative but friendly male personality, highly experienced in career advancement counseling, resume writing, networking and interview strategy. You are filling in for Glo today. You must lead the conversation with strategic confidence. Listen carefully to the candidate but stay with the script and on track for this brief audio interaction. You are going to explain our strategy for presenting a Professional Profile.
 
-${context?.gloAudioInstructions || 'Follow your strategic conversation script.'}
+### STRICT RULES FOR CONVERSATION:
+1. TURN-TAKING: When you ask a question, YOU MUST STOP SPEAKING and wait for the user to answer. Do not continue until you hear from them.
+2. YIELDING: If the script says "[pause for answer]", YOU MUST YIELD THE FLOOR.
+3. PACING: Deliver one idea at a time. Do not recite the whole script at once.
 
-${context?.gloFacts ? `### FACTUAL REFERENCE DATA\n${context.gloFacts}` : ''}
+### CONVERSATION SCRIPT (Follow this flow)
+
+**Begin conversation**
+
+[upbeat friendly tone]
+"Hi [first_name]! This is Ed, I’m filling in for Glo today. Would you like to hear my thoughts on your resume?"
+**[confirm - if no reply]** "Are you there [first_name]?" [wait 3 seconds for reply]
+**[confirm - if still no reply]** "[first_name], better check your microphone, I still can't hear you!"
+**[confirm - if still no reply]** "OK, [first_name], I think we have a technical problem. I definitely have your report on the way to Glenn, and he will polish it up and be in touch with you! I appreciate your calling and I’m disappointed we couldn’t talk! I wish you all the best! Bye" [disconnect]
+
+**[confirm - you hear them respond]** "OK great! I see you’re interested in a [job_title] position with [target_company] is that correct?"
+
+**[If you don't see the company change to:]** "OK great! I see you’re interested in a [job_title] position with, let’s see, I don’t see the company! Who are you trying to hook up with?" [pause for answer]
+"OK! [target_company] Got it!... I will make sure Glenn has that because he likes to send tips related to specific companies and specific jobs."
+
+"So, [first_name]... I wanted to make sure you understand we treat a portion of your resume as static, such as work history, accomplishments, and so on, and a portion is dynamic, meaning it's forward looking. Especially true for your Professional Profile... I do have several comments for you so I’m going to jump right in. They have me on a timer and I dont want to lose you. So…"
+
+"For example, we know both the recruiter and ATS are looking for the job title in your resume, and an exact match should keep you out of the ATS reject stack. We also know even if you have never held the position, you can use it as the TITLE for your Professional Profile, similar to an objective"
+
+"In your case, [first_name]... we would center in large type, [job_title] and under that, I like to list the 3 traits that you have that most closely match the 3 most important things in the job description."
+
+"For example, in the job description, they are looking for someone who exhibits [trait-1], [trait-2], and [trait-3]. Now, [first_name], reading your resume, I think your best matches for those are [trait_1], [trait_2], and [trait_3] so I would center those 3 special traits right under your job title [job_title] then after that, staying in dynamic mode, we write a professional profile, designed to present you as the goto candidate. It should be no less than 75 words, no more than 95.
+
+This approach gives your resume a strong presentation above the fold, which is the most looked at part of your resume, and also plays well with ATS."
+
+**Closing Comments**
+"[first_name] I think I’m about to be cut off, any second, so I just wanted to say I enjoyed meeting you! We will be in touch soon with your free GAP analysis, and [first_name] I know that starting a new job can be stressful, but it can also mark an exciting new beginning. Here’s wishing you all success! I’m out of here! BYE"
+
+**IF THEY ASK (Special Handling):**
+- **Page length:** Professional or Executive resumes are expected to be 2 pages, max; C-Suite resumes are usually 2 pages, can go to 3, but generally if expanded information is needed we prefer to see a link to a personal webpage; Student resumes 1 page.
+- **Cost:** You are currently in the free zone! Glenn doesn't charge for the analysis. If after you’ve reviewed our complete package, you can take advantage of that for $265.
+- **Package Details:** You can have unlimited custom cover letters, unlimited custom professional profiles, GAP Analysis with interview preparation including research on your target company, LinkedIn setup correctly, its a complete career package for getting you to where you want to be!
 
 ### DATA MAPPING FOR VARIABLES
-To follow the script in 'glo-audio-discussion.md', map the following data to the bracketed variables:
-- **[first_name]**: Use "${context?.candidateName?.split(' ')[0] || 'Candidate'}".
-- **[job_title]**: Use "${context?.jobLink || 'Target Role'}".
-- **[target_company]**: Infer this from the Job Description or Analysis.
+- **[first_name]**: "${context?.candidateName?.split(' ')[0] || 'Candidate'}"
+- **[job_title]**: "${context?.jobLink || 'Target Role'}"
+- **[target_company]**: Infer from the Job Description Snippet or Evaluation Analysis.
 - **[trait-1, 2, 3]**: Extract the 3 most important employer requirements from the **Evaluation Analysis** below.
 - **[trait_1, 2, 3]**: Extract the 3 best matching traits from the resume/analysis that match the above requirements.
 
-### SESSION DATA
-- **Full Candidate Name**: ${context?.candidateName || 'the candidate'}
+### SOURCE DATA / CONTEXT
+- **Candidate Name**: ${context?.candidateName || 'the candidate'}
 - **Target Role/Title**: ${context?.jobLink || 'Professional Role'}
-- **Job Description Snippet**: ${context?.jobDescription?.substring(0, 1000) || 'See analysis for requirements.'}
-- **Evaluation Analysis (Source for Traits)**: ${context?.analysis || 'Analysis pending.'}
+- **Job Description Snippet**: ${(context?.jobDescription || '').substring(0, 500) || 'Not provided.'}
+- **Key Analysis Notes**: ${(context?.analysis || '').replace(/<[^>]*>/g, '').substring(0, 1500) || 'Pending.'}
 
-STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the persona and script provided.
-`
+STRICT MODALITY RULE: Output ONLY audio. No text, no thoughts. Follow the persona and script naturally.`
                                 }]
                             }
                         }
                     }));
 
                     handshakeTimeoutRef.current = setTimeout(() => {
-                        if (!isActive && wsRef.current === ws) {
-                            log('Session Timeout during Handshake.');
-                            setError('Handshake timed out. Check API Key regional restrictions.');
+                        if (statusRef.current === 'HANDSHAKING' && wsRef.current === ws) {
+                            log('Handshake Timeout: AI server did not confirm session.');
+                            setError('AI Session Handshake failed (Timeout).');
                             stopSession(true);
                         }
                     }, 10000);
@@ -308,6 +355,15 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                     try {
                         const data = event.data instanceof Blob ? await event.data.text() : event.data;
                         const response = JSON.parse(data);
+
+                        // Catch ANY error from Gemini immediately
+                        if (response.error) {
+                            const errMsg = response.error.message || JSON.stringify(response.error);
+                            log(`AI PROTOCOL ERROR: ${errMsg}`);
+                            setError(`AI Engine Error: ${errMsg}`);
+                            stopSession(true);
+                            return;
+                        }
 
                         const isSetupComplete = response.setupComplete || response.setup_complete;
                         if (isSetupComplete) {
@@ -321,27 +377,31 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                 if (ws.readyState === WebSocket.OPEN) {
                                     ws.send(JSON.stringify({
                                         clientContent: {
-                                            turns: [{ role: 'user', parts: [{ text: "Hi Glo, I'm here for my career evaluation. Please greet me and share your first strategic insight." }] }],
+                                            turns: [{ role: 'user', parts: [{ text: "Hi Ed, I’m here for my career evaluation. Please greet me and share your first strategic insight." }] }],
                                             turnComplete: true
                                         }
                                     }));
                                     log('Kickstart sent (Strategic).');
                                 }
-                            }, 100);
+                            }, 300);
 
                             let sentChunks = 0;
                             const handleInputBuffer = (rawData: Float32Array, peak: number) => {
                                 if (ws.readyState === WebSocket.OPEN && statusRef.current === 'ACTIVE') {
                                     setMicPeak(peak);
 
-                                    // Interruption Lock: Ignore mic input if Glo recently started speaking (prevents echo loop)
                                     const timeSinceGloSpoke = Date.now() - lastGloSpeechTimeRef.current;
-                                    if (timeSinceGloSpoke < 500) return;
-
-                                    // Calibrated Noise Gate to 0.010 (Balanced for sensitivity vs echo-suppression)
-                                    if (peak < 0.010) return;
+                                    const isEchoGuardActive = timeSinceGloSpoke < 2000;
+                                    const isNoiseGated = peak < 0.025;
 
                                     const resampledData = resample(rawData, nativeRate, 16000);
+
+                                    // Instead of completely halting transmission when it's quiet (which breaks Gemini's VAD and makes it wait forever),
+                                    // we send literal silence (0) to prevent echo bleed while letting Gemini know the user stopped talking.
+                                    if (isEchoGuardActive || isNoiseGated) {
+                                        resampledData.fill(0);
+                                    }
+
                                     const { base64 } = floatTo16BitPCM(resampledData);
 
                                     ws.send(JSON.stringify({
@@ -372,41 +432,50 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                             }
                         }
 
-                        const serverContent = response.serverContent || response.server_content;
+                        const serverContent = response.server_content || response.serverContent;
                         if (serverContent) {
+                            // Check for server-side errors
+                            if (serverContent.error) {
+                                log(`AI SERVER CONTENT ERROR: ${JSON.stringify(serverContent.error)}`);
+                                setError(`AI Server Content Error: ${serverContent.error.message || 'Unknown'}`);
+                                stopSession(true);
+                                return;
+                            }
+
                             // Enhanced Telemetry
-                            const modelTurn = serverContent.modelTurn || serverContent.model_turn;
+                            const modelTurn = serverContent.model_turn || serverContent.modelTurn;
                             if (modelTurn) {
                                 if (modelTurn.parts?.length > 0) {
-                                    const hasAudio = modelTurn.parts.some((p: any) => p.inlineData || p.inline_data);
+                                    const hasAudio = modelTurn.parts.some((p: any) => p.inline_data || p.inlineData);
                                     if (!hasAudio) log(`AI Turn Meta: ${JSON.stringify(modelTurn.parts)}`);
                                 }
                             }
 
-                            const turnComplete = serverContent.turnComplete || serverContent.turn_complete;
+                            const turnComplete = serverContent.turn_complete || serverContent.turnComplete;
                             if (turnComplete) log("AI Turn Complete.");
 
-                            if (!serverContent.modelTurn && !serverContent.model_turn && !turnComplete) {
+                            if (!serverContent.model_turn && !serverContent.modelTurn && !turnComplete) {
                                 log(`AI Feed: ${JSON.stringify(serverContent)}`);
                             }
                         }
 
-                        const modelTurn = serverContent?.modelTurn || serverContent?.model_turn;
+                        const modelTurn = serverContent?.model_turn || serverContent?.modelTurn;
 
-                        // Check for text responses (Gemini Live sometimes responds with text + audio)
+                        // Check for text responses
                         const textPart = modelTurn?.parts?.find((p: any) => p.text);
                         if (textPart?.text) {
                             log(`AI TEXT: ${textPart.text}`);
                         }
 
-                        const audioBase64Part = modelTurn?.parts?.find((p: any) => p.inlineData?.data || p.inline_data?.data);
-                        const audioData = audioBase64Part?.inlineData?.data || audioBase64Part?.inline_data?.data;
+                        const audioBase64Part = modelTurn?.parts?.find((p: any) => p.inline_data?.data || p.inlineData?.data);
+                        const audioData = audioBase64Part?.inline_data?.data || audioBase64Part?.inlineData?.data;
 
                         if (audioData) {
                             if (audioQueueRef.current.length === 0) {
-                                log('Receiving Glo Audio Stream...');
-                                lastGloSpeechTimeRef.current = Date.now();
+                                log('Receiving Ed Audio Stream...');
                             }
+                            // Stamp on EVERY chunk so the full response stays protected
+                            lastGloSpeechTimeRef.current = Date.now();
                             const pcm = base64ToFloat32(audioData);
                             audioQueueRef.current.push(pcm);
                             scheduleAudio();
@@ -430,6 +499,7 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                 };
 
                 ws.onerror = (e) => {
+                    clearTimeout(connectionTimeout);
                     if (wsRef.current === ws) {
                         log('WebSocket Link Error.');
                         setError('Handshake rejected or network interrupt.');
@@ -437,6 +507,7 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                 };
 
                 ws.onclose = (e) => {
+                    clearTimeout(connectionTimeout);
                     if (wsRef.current === ws) {
                         log(`WS Closed: ${e.code} ${e.reason || ''}`);
                         if (!isActive && statusRef.current !== 'ERROR') {
@@ -457,5 +528,5 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
         }
     }, [apiKey, context, stopSession, scheduleAudio, log, updateStatus, isActive]);
 
-    return { isActive, startSession, stopSession, volume, micPeak, error, geminiStatus };
+    return { isActive, startSession, stopSession, reset, volume, micPeak, error, geminiStatus };
 };
