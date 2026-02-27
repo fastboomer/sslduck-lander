@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 console.log("[GAP_ROUTE] Module Loaded");
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // Max duration for Vercel Hobby tier is usually 60s (Pro is up to 300s)
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { db } from '@/app/lib/firebase';
@@ -10,15 +11,17 @@ import { sendGapReport } from '@/app/lib/mail';
 import fs from 'fs';
 import path from 'path';
 
+import os from 'os';
+
 export async function POST(req: NextRequest) {
-    const logPath = path.join(process.cwd(), 'debug-api-log.txt');
-    fs.appendFileSync(logPath, `[${new Date().toISOString()}] Request received\n`);
+    console.log(`[${new Date().toISOString()}] Request received`);
     console.log("[GAP_PROCESS] Request received.");
 
     try {
         // 0. Setup Provider (Inside try to catch config errors)
+        const rawKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY || '';
         const googleAI = createGoogleGenerativeAI({
-            apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY,
+            apiKey: rawKey.trim(),
         });
 
         const formData = await req.formData();
@@ -194,7 +197,7 @@ export async function POST(req: NextRequest) {
             const timestamp = Date.now().toString().slice(-6);
             const filename = `gap-${safeName || 'report'}-${timestamp}`;
 
-            const gapUsersDir = path.join(process.cwd(), 'GAP-USERS');
+            const gapUsersDir = path.join(os.tmpdir(), 'GAP-USERS');
 
             if (!fs.existsSync(gapUsersDir)) {
                 console.log("[GAP_PROCESS] Creating GAP-USERS directory...");
@@ -207,7 +210,7 @@ export async function POST(req: NextRequest) {
             console.log("[GAP_PROCESS] Saved Word report to:", filePath);
 
             // 9.1 Save AI-ready Markdown version
-            const mdFilePath = path.join(process.cwd(), 'GAP-USERS', `${filename}.md`);
+            const mdFilePath = path.join(os.tmpdir(), 'GAP-USERS', `${filename}.md`);
             fs.writeFileSync(mdFilePath, analysis);
             console.log("[GAP_PROCESS] Saved AI-ready Markdown to:", mdFilePath);
 
@@ -233,8 +236,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        const logPath = path.join(process.cwd(), 'debug-api-log.txt');
-        fs.appendFileSync(logPath, `[${new Date().toISOString()}] CRITICAL ERROR: ${error.message}\n${error.stack}\n`);
+        console.error(`[${new Date().toISOString()}] CRITICAL ERROR: ${error.message}\n${error.stack}\n`);
         console.error("[GAP_PROCESS] CRITICAL ERROR:", error);
         return NextResponse.json(
             {

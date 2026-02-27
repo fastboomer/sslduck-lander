@@ -121,6 +121,7 @@ export const ResumeOfferCard: React.FC = () => {
                                     </p>
                                     <input
                                         type="file"
+                                        suppressHydrationWarning
                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                         onChange={(e) => {
                                             const file = e.target.files?.[0];

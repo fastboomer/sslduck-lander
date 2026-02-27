@@ -277,7 +277,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
             if (e.name === 'NotFoundError') {
                 setLocalError("No microphone found. Please connect a microphone.");
             } else if (e.name === 'NotAllowedError' || (e.message || '').toLowerCase().includes('denied')) {
-                setLocalError("Permission Denied. Please click the lock icon ≡ƒöÆ in your browser's address bar to enable microphone access.");
+                setLocalError("Permission Denied. Please click the lock icon 🔒 in your browser's address bar to enable microphone access.");
             } else {
                 setLocalError(`Mic Error: ${e.message}`);
             }
