@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,7 +13,7 @@ interface GloLiveHubProps {
 type SessionStatus = 'IDLE' | 'PREFLIGHT' | 'CONNECTING' | 'ACTIVE' | 'ERROR';
 
 // --- Dynamic TTS Helper for Simone Intro via Gemini Live API ---
-const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string, onStart: () => void, onEnd: () => void, onLog: (msg: string) => void) => {
+const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string, onStart: () => void, onEnd: () => void, onLog: (msg: string) => void, cancelRef?: React.MutableRefObject<(() => void) | null>) => {
     try {
         if (!apiKey) throw new Error("API Key missing");
         onLog(`Requesting Live TTS for voice: ${voiceName}...`);
@@ -28,6 +28,12 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
             // We do not close the AudioContext immediately to let audio finish playing, 
             // but we call onEnd after a reasonable timeout if no more audio comes.
         };
+        if (cancelRef) {
+            cancelRef.current = () => {
+                cleanup();
+                if (actx) actx.close().catch(() => { });
+            };
+        }
         ws.onopen = () => {
             onLog('TTS WS Open. Sending Setup...');
             ws.send(JSON.stringify({
@@ -144,12 +150,22 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     const [preflightUserMicLevel, setPreflightUserMicLevel] = useState(0);
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string>('default');
-    const [isSiteB] = useState(true); // Designation for Site B
+    const [isSiteB] = useState(false); // Designation for Site B
 
     // Pre-talk State
-    const [isPreTalk, setIsPreTalk] = useState(false);
-    const [preTalkCaption, setPreTalkCaption] = useState('');
+    const [isPreTalk, setIsPreTalk] = useState(true);
+    const [preTalkCaption, setPreTalkCaption] = useState('Connecting to Simone...');
     const hasPlayedIntroRef = useRef(false);
+    const cancelTTSRef = useRef<(() => void) | null>(null);
+
+    const skipIntro = useCallback(() => {
+        if (cancelTTSRef.current) {
+            cancelTTSRef.current();
+            cancelTTSRef.current = null;
+        }
+        setIsPreTalk(false);
+        hasPlayedIntroRef.current = true;
+    }, []);
 
     const addLog = useCallback((msg: string) => {
         console.log(`[GLO_UI] ${msg}`);
@@ -184,18 +200,18 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         fetchContext();
     }, [reportId, addLog]);
 
-    // ── Simone Intro via Web Speech API (no user-gesture required) ──
+    // ΓöÇΓöÇ Simone Intro via Web Speech API (no user-gesture required) ΓöÇΓöÇ
     const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
     useEffect(() => {
-        if (!context || isPreTalk || hasPlayedIntroRef.current) return;
+        if (!context || hasPlayedIntroRef.current) return;
         if (status !== 'IDLE' && status !== 'PREFLIGHT') return;
 
         const timer = setTimeout(() => {
-            if (hasPlayedIntroRef.current || isPreTalk) return;
+            if (hasPlayedIntroRef.current || !isPreTalk) return;
 
             const firstName = context.candidateName?.split(' ')[0] || 'there';
-            const text = `Hey ${firstName}, it's Simone! I've forwarded your resume to Glenn. I also have Ed on the line, with comments on your resume profile. Ed is one of our super smart virtual assistants! If you would like to talk, just click the Talk to Ed button!`;
+            const text = `Hey ${firstName}, it's Simone! I've forwarded your resume to Glenn. I also have Glo on the line, with comments on your resume profile. If you would like to talk just click the Talk to Glo Button.`;
 
             addLog('Simone Intro: Initiating dynamic TTS (Aoede)...');
             hasPlayedIntroRef.current = true;
@@ -212,19 +228,12 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                     addLog('Simone TTS: Finished.');
                     setIsPreTalk(false);
                 },
-                addLog
+                addLog,
+                cancelTTSRef
             );
         }, 1000);
         return () => clearTimeout(timer);
     }, [context, status, isPreTalk, addLog, apiKey]);
-
-    const skipIntro = useCallback(() => {
-        window.speechSynthesis?.cancel();
-        setIsPreTalk(false);
-        setPreTalkCaption('');
-        hasPlayedIntroRef.current = true;
-        addLog('Intro skipped by user.');
-    }, [addLog]);
 
     // Mic Management & Pre-flight
     const micMeterRef = useRef<AudioContext | null>(null);
@@ -260,10 +269,18 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
 
             stream.getTracks().forEach(t => t.stop());
             setIsRefreshingMics(false);
+            startMicMeter(); // Start the meter after getting permission and enumerating
         } catch (e: any) {
             setIsRefreshingMics(false);
             addLog(`Permission Error: ${e.message}`);
-            setLocalError("Permission Denied. Please allow microphone access in your browser settings.");
+
+            if (e.name === 'NotFoundError') {
+                setLocalError("No microphone found. Please connect a microphone.");
+            } else if (e.name === 'NotAllowedError' || (e.message || '').toLowerCase().includes('denied')) {
+                setLocalError("Permission Denied. Please click the lock icon ≡ƒöÆ in your browser's address bar to enable microphone access.");
+            } else {
+                setLocalError(`Mic Error: ${e.message}`);
+            }
         }
     };
 
@@ -334,6 +351,10 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
 
     const enterPreflight = async () => {
         window.speechSynthesis.cancel();
+        if (cancelTTSRef.current) {
+            cancelTTSRef.current();
+            cancelTTSRef.current = null;
+        }
         setIsPreTalk(false);
         setLocalError(null);
         setStatus('PREFLIGHT');
@@ -350,9 +371,9 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
             setHasPermission(false);
             // Default item while waiting
             setDevices([{ deviceId: 'default', label: 'Identifying...', kind: 'audioinput' } as MediaDeviceInfo]);
-            // Automatically prompt for permission instead of waiting for a button click
-            await requestPermission();
-            startMicMeter();
+            // Removed automatic prompt to prevent browser popup overriding UI
+            // await requestPermission();
+            // startMicMeter();
         }
     };
 
@@ -423,7 +444,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                             >
                                 {/* Caption */}
                                 <div className="px-8 max-w-sm text-center z-10">
-                                    <p className="text-[10px] font-bold text-royal-blue/50 uppercase tracking-widest mb-3">Simone · SSLDUCK</p>
+                                    <p className="text-[10px] font-bold text-royal-blue/50 uppercase tracking-widest mb-3">Simone ┬╖ SSLDUCK</p>
                                     <motion.p
                                         initial={{ y: 10, opacity: 0 }}
                                         animate={{ y: 0, opacity: 1 }}
@@ -443,40 +464,28 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                                     </div>
                                 </div>
 
-                                <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+                                {/* SKIP INTRO BUTTON */}
+                                <div className="absolute bottom-6 right-6 z-20">
                                     <button
                                         onClick={skipIntro}
-                                        className="bg-white/10 hover:bg-white/20 text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] px-4 py-2 rounded-full backdrop-blur-md border border-white/10 transition-all flex items-center gap-2"
+                                        className="bg-white/10 hover:bg-white/20 text-white/70 hover:text-white px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/20 transition-all flex items-center gap-2 group/skip"
                                     >
-                                        <X size={12} /> Skip Intro
+                                        Skip
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70 group-hover/skip:opacity-100 group-hover/skip:translate-x-0.5 transition-all"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                                     </button>
                                 </div>
+
                             </motion.div>
-                        ) : isActive ? (
+                        ) : (
                             <motion.img
                                 key="photo"
                                 initial={{ opacity: 0, scale: 1.1 }}
                                 animate={{ opacity: 1, scale: 1.05 }}
                                 exit={{ opacity: 0, scale: 1.1 }}
                                 src="https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/glo-3-female-human.png?alt=media&token=0ab75fba-deeb-41c4-b62c-2635057b4a8f"
-                                alt="Ed"
+                                alt="Glo"
                                 className="w-full h-full object-cover brightness-110"
                             />
-                        ) : (
-                            <motion.div
-                                key="graphic"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="w-full h-full bg-slate-900 flex items-center justify-center p-12"
-                            >
-                                <div className="text-royal-blue/20">
-                                    <Sparkles size={120} className="animate-pulse" />
-                                </div>
-                                <div className="absolute bottom-10 text-center">
-                                    <p className="text-white/20 text-[10px] font-mono uppercase tracking-[0.5em]">System Ready</p>
-                                </div>
-                            </motion.div>
                         )}
                     </AnimatePresence>
                     <AudioAura isActive={isActive || isPreTalk} volume={isPreTalk ? 0.3 : volume} />
@@ -486,7 +495,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
                                 <h3 className="text-white font-serif text-2xl font-bold flex items-center gap-2">
-                                    Ed <Sparkles size={20} className="text-yellow-400 animate-pulse" />
+                                    Glo <Sparkles size={20} className="text-yellow-400 animate-pulse" />
                                 </h3>
                                 <p className="text-white/60 text-xs font-medium uppercase tracking-widest flex items-center gap-2">
                                     {isActive ? (
@@ -525,7 +534,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                             >
                                 <span className="relative z-10 flex items-center gap-3">
                                     <Mic size={28} className="group-hover:animate-bounce" />
-                                    Talk to Ed
+                                    Talk to Glo
                                 </span>
                                 <div className="absolute inset-0 bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors" />
                                 <div className="absolute -inset-2 bg-emerald-400/30 rounded-full blur-xl animate-pulse pointer-events-none" />
@@ -694,7 +703,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <div className="flex justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                                <span className="flex items-center gap-1.5"><Info size={10} /> Ed (Output)</span>
+                                <span className="flex items-center gap-1.5"><Info size={10} /> Glo (Output)</span>
                                 <span className="text-royal-blue">{(volume * 100).toFixed(0)}%</span>
                             </div>
                             <div className="h-4 bg-gray-200/50 rounded-full overflow-hidden border border-black/5 p-0.5">

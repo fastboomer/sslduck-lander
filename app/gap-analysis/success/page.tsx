@@ -84,7 +84,7 @@ function GapSuccessContent() {
 
                                         <p>On average you should hear from me in 24-48 hours as I limit the number of free offers in any given week. However, it's possible for you to access very valuable <span className="font-bold text-royal-blue underline italic">instant information</span> right now!</p>
 
-                                        <p>Click the green button and you can talk with my super smart AI assistant, Ed. As you read this, Ed is already evaluating your professional profile against the job narrative. He's found some key gaps we can exploit.</p>
+                                        <p>Click the green button and you can talk with my super smart AI assistant, Glo. As you read this, Glo is already evaluating your professional profile against the job narrative. She's found some key gaps we can exploit.</p>
 
                                         <div className="pt-4">
                                             <p className="font-serif font-bold text-royal-blue text-lg italic">Positive thoughts, Glenn</p>

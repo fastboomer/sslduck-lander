@@ -17,7 +17,7 @@ export async function GET(request: Request) {
         // For the MVP, it returns the structured text for the "Pre-talk" strategy.
 
         return NextResponse.json({
-            introText: "Hi there, it's Simone! I've forwarded your resume to Glenn and he will be in touch soon. I also have Ed on the line with some comments regarding your interesting profile I can share with you right now, if you would like to talk. Just hit the 'Talk to Ed' button.",
+            introText: "Hi there, it's Simone! I've forwarded your resume to Glenn and he will be in touch soon. I also have Glo on the line with some comments regarding your interesting profile I can share with you right now, if you would like to talk. Just hit the 'Talk to Glo' button.",
             captionDuration: 6000 // ms
         });
     } catch (err: any) {
