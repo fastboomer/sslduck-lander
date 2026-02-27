@@ -565,9 +565,22 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                                     <div className="space-y-1 text-left">
                                         <label className="text-[10px] font-bold text-white/50 uppercase ml-1">Hardware Input</label>
                                         {(geminiError || localError) && (
-                                            <div className="bg-red-900/40 border border-red-500/50 p-3 rounded-xl text-[11px] text-red-100 mb-2 flex items-center gap-2">
-                                                <AlertCircle size={14} className="shrink-0" />
-                                                <span className="leading-tight">{geminiError || localError}</span>
+                                            <div className="bg-red-900/40 border border-red-500/50 p-3 rounded-xl text-[11px] text-red-100 mb-4 flex flex-col gap-2">
+                                                <div className="flex items-start gap-2">
+                                                    <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                                                    <span className="leading-tight font-bold">{geminiError || localError}</span>
+                                                </div>
+                                                {((localError || '').includes('Permission Denied') || (localError || '').includes('lock icon')) && (
+                                                    <div className="bg-black/40 p-3 rounded-lg border border-red-500/30 mt-1 space-y-2 text-left">
+                                                        <p className="font-bold text-[10px] text-red-300 uppercase tracking-widest">How to fix this:</p>
+                                                        <ol className="list-decimal list-inside space-y-1.5 text-white/80 pl-1">
+                                                            <li>Look at the top URL address bar.</li>
+                                                            <li>Click the <span className="inline-block bg-white/10 px-1 rounded mx-0.5 shadow-sm">🔒 lock icon</span> left of the URL.</li>
+                                                            <li>Find <strong>Microphone</strong> &amp; change to <strong>Allow</strong>.</li>
+                                                            <li>Refresh this page.</li>
+                                                        </ol>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                         {!hasPermission ? (
