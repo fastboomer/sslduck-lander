@@ -216,12 +216,12 @@ export async function POST(req: NextRequest) {
 
             // 10. Email to Glenn
             console.log("[GAP_PROCESS] Emailing report to Glenn...");
-            await sendGapReport('glenn@sslduck.net', candidateName, docBuffer, filename);
+            await sendGapReport('glenn@sslduck.net', candidateName, analysis, filename);
 
             // Also email to user if they provided one
             if (contactEmail && contactEmail.includes('@')) {
                 console.log("[GAP_PROCESS] Emailing copy to user:", contactEmail);
-                await sendGapReport(contactEmail, candidateName, docBuffer, filename);
+                await sendGapReport(contactEmail, candidateName, analysis, filename);
             }
         } catch (exportErr: any) {
             console.error("[GAP_PROCESS] Export/Email failed:", exportErr);

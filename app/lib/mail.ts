@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-export async function sendGapReport(to: string, candidateName: string, docBuffer: Buffer, filename: string) {
+export async function sendGapReport(to: string, candidateName: string, content: string | Buffer, filename: string) {
     try {
         const apiKey = process.env.RESEND_API_KEY || "";
         if (!apiKey) {
@@ -10,6 +10,14 @@ export async function sendGapReport(to: string, candidateName: string, docBuffer
         const resend = new Resend(apiKey);
         console.log(`[MAIL] Sending GAP Report for ${candidateName} to ${to}...`);
 
+        const isBuffer = Buffer.isBuffer(content);
+        const attachmentName = isBuffer ? `${filename}.docx` : `${filename}.md`;
+
+        // Ensure CRLF newlines so plain text editors (like Notepad) display the markdown cleanly
+        const parsedContent = isBuffer
+            ? content
+            : Buffer.from((content as string).replace(/(?<!\r)\n/g, '\r\n'), 'utf-8');
+
         const { data, error } = await resend.emails.send({
             from: 'SSLDUCK Reports <reports@sslduck.net>', // Replaced with a placeholder/proper domain if verified
             to: [to],
@@ -17,8 +25,8 @@ export async function sendGapReport(to: string, candidateName: string, docBuffer
             text: `Please find attached the GAP Analysis report for ${candidateName}.`,
             attachments: [
                 {
-                    filename: `${filename}.docx`,
-                    content: docBuffer,
+                    filename: attachmentName,
+                    content: parsedContent,
                 },
             ],
         });
