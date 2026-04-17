@@ -236,7 +236,7 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
                         <Type size={18} /> Job Requirements <span className="text-red-500">*</span>
                     </label>
                     <p className="text-[10px] text-royal-blue/50 font-medium leading-relaxed">
-                        <span className="text-red-500 font-bold">WARNING:</span> Ensure you include the **Employer Name** and **Location** in your paste or upload. Limited data restricts Ed's ability to research the specific company culture and financials.
+                        <span className="text-red-500 font-bold">WARNING:</span> Ensure you include the **Employer Name** and **Location** in your paste or upload. Limited data restricts Glo's ability to research the specific company culture and financials.
                     </p>
 
                     <div className="flex bg-royal-blue/5 rounded-full p-1 border border-royal-blue/10 w-fit mx-auto">
