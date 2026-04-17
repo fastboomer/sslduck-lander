@@ -76,7 +76,7 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
                     },
                     systemInstruction: {
                         parts: [{
-                            text: "You are a pure Text-To-Speech engine. Your absolute only purpose is to repeat the EXACT text provided by the user. Do NOT answer questions, do NOT acknowledge the user, do NOT add conversational filler, and do NOT invent dialogue. Simply say the provided text out loud and stop."
+                            text: "You are a professional Text-To-Speech engine. Speak the user's text exactly once with a natural, professional tone. Do not repeat phrases, do not hallucinate, and do not add conversational filler. Speak the text and immediately stop."
                         }]
                     }
                 }
@@ -86,12 +86,12 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
             try {
                 const data = event.data instanceof Blob ? await event.data.text() : event.data;
                 const response = JSON.parse(data);
-                if (response.setupComplete || response.setup_complete) {
+                if ((response.setupComplete || response.setup_complete) && !isSetupComplete) {
                     isSetupComplete = true;
                     onLog('TTS Setup Complete. Sending text...');
                     ws.send(JSON.stringify({
                         clientContent: {
-                            turns: [{ role: 'user', parts: [{ text: `Read this text exactly as written, word-for-word, with no additions:\n\n"${text}"` }] }],
+                            turns: [{ role: 'user', parts: [{ text: `Speak this verbatim, exactly once:\n\n${text}` }] }],
                             turnComplete: true
                         }
                     }));

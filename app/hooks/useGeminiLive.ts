@@ -383,26 +383,25 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                     
                                     const msSinceLastLoudSound = Date.now() - silenceStart;
                                     
-                                    // Let native VAD have the unaltered audio (no zero-padding)
-                                    const resampledData = resample(rawData, nativeRate, 16000);
-                                    const { base64 } = floatTo16BitPCM(resampledData);
+                                    // True Client-Side VAD: Gate the websocket.
+                                    // We only send audio to Google if we are actively speaking, OR we are in the 1.5s trailing edge.
+                                    // If we are completely quiet, we STOP sending realtimeInput packets entirely.
+                                    // This completely eliminates native VAD latency without triggering Code 1007 schema errors!
+                                    if (msSinceLastLoudSound < 1500) {
+                                        const resampledData = resample(rawData, nativeRate, 16000);
+                                        const { base64 } = floatTo16BitPCM(resampledData);
 
-                                    ws.send(JSON.stringify({
-                                        realtimeInput: {
-                                            mediaChunks: [{
-                                                mimeType: 'audio/pcm;rate=16000',
-                                                data: base64
-                                            }]
-                                        }
-                                    }));
-                                    
-                                    // CLIENT VAD: If the user spoke, and has been quiet for 1.25s, FORCE turn complete
-                                    if (hasSpokenThisTurn && msSinceLastLoudSound > 1250) {
-                                        log("User paused for 1.25s. Forcing TurnComplete to reduce latency.");
                                         ws.send(JSON.stringify({
-                                            clientContent: { turnComplete: true }
+                                            realtimeInput: {
+                                                mediaChunks: [{
+                                                    mimeType: 'audio/pcm;rate=16000',
+                                                    data: base64
+                                                }]
+                                            }
                                         }));
-                                        hasSpokenThisTurn = false; // reset until they speak again
+                                    } else if (hasSpokenThisTurn) {
+                                        log("User paused cleanly. Audio gate closed to force server VAD execution.");
+                                        hasSpokenThisTurn = false;
                                     }
 
                                     sentChunks++;
