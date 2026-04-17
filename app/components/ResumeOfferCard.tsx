@@ -115,7 +115,7 @@ export const ResumeOfferCard: React.FC = () => {
                 <div className="relative z-10 text-royal-blue">
                     <h2 className="text-3xl font-bold mb-2">In a rush? (v12)</h2>
                     <p className="text-lg text-royal-blue/70 mb-8">
-                        Get a Free Professional Resume Audit & GAP Analysis delivered in under 48 hours!
+                        Get a Free Professional Resume Audit & GAP Analysis delivered Right Now, On The Spot!
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-8">
@@ -174,13 +174,13 @@ export const ResumeOfferCard: React.FC = () => {
                         <div className="space-y-3 bg-white border border-royal-blue/10 p-6 rounded-2xl shadow-sm">
                             <label className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-royal-blue">
                                 <FileText className="w-4 h-4" />
-                                Target Job Link or Description
+                                Copy/Paste Target Job Description
                             </label>
                             <textarea
                                 rows={5}
                                 value={jobDescription}
                                 onChange={(e) => setJobDescription(e.target.value)}
-                                placeholder="Place employer's complete job description or link here..."
+                                placeholder="Place Employer's Complete Job Description Here... PRO TIP: Make sure you have included employer's name and Exact JobTitle."
                                 className="w-full bg-[#fcfcfc] border border-royal-blue/10 rounded-xl p-4 focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue outline-none transition-all placeholder:text-royal-blue/30 text-sm"
                             />
                         </div>
@@ -240,6 +240,81 @@ export const ResumeOfferCard: React.FC = () => {
 
                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-royal-blue/5 rounded-full blur-3xl group-hover:bg-royal-blue/10 transition-colors duration-700" />
                 <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-royal-blue/5 rounded-full blur-3xl group-hover:bg-royal-blue/10 transition-colors duration-700" />
+            </div>
+
+            {/* Suitability Study Features Card */}
+            <div className="mt-8 bg-white rounded-[40px] p-8 md:p-12 border border-royal-blue/10 shadow-xl relative overflow-hidden">
+                <style dangerouslySetInnerHTML={{__html: `
+                    @import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@1,900&display=swap');
+                `}} />
+                
+                <h1 style={{ color: '#FF0000', fontSize: '24px', fontStyle: 'italic', fontWeight: 900, fontFamily: "'Rubik', system-ui, sans-serif", letterSpacing: '-0.02em', marginBottom: '24px' }}>
+                    Today's Free Feature!
+                </h1>
+
+                <h2 style={{ fontSize: '19px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', marginBottom: '20px' }}>
+                    Applicant Suitability Study
+                </h2>
+
+                <p style={{ fontSize: '16px', fontStyle: 'italic', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', marginBottom: '32px' }}>
+                    Here's what you receive in today's free custom Applicant Suitability Study:
+                </p>
+
+                <div className="space-y-6 text-black">
+                    <div className="flex flex-col">
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                            1. Hard and Soft Skills Analysis
+                        </h3>
+                        <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
+                            An inventory of your hard, soft, and implied skills based on your resume, so that you can see how they match up with the specific requirements of your target job. (You may have valuable sought after skills you simply failed to include in your resume.)
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col">
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                            2. Target Job Requirements. 
+                        </h3>
+                        <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
+                            A close look at your target employer's job requirements (wish list) This provides a good idea of what is actually important to them for a specific position. Do you look like a good "fit?"
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col">
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                            3. Probable ATS Diagnosis
+                        </h3>
+                        <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
+                            Using your resume and your target position, we discover if ghosting problems are related to ATS.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col">
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                            4. Probable Interview Questions Based on Your Resume vs Job Requirements
+                        </h3>
+                        <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
+                            Includes suggested answers to mitigate resume shortcomings vs employer's requirements.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col">
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                            5. Bonus 1 - Best Practices Audit
+                        </h3>
+                        <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
+                            Resume Best Practices audit. We determine if your resume is failing any best practices.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col">
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                            6. Bonus 2 - Other Jobs You Are Qualified For
+                        </h3>
+                        <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
+                            There may be other, equally attractive jobs you are qualified for, but are unaware of. Insertion of new keywords in your LinkedIn profile may result in surprising search results and offers!
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );
