@@ -375,23 +375,16 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                     const timeSinceGloSpoke = Date.now() - lastGloSpeechTimeRef.current;
                                     const isEchoGuardActive = timeSinceGloSpoke < 2000;
                                     
-                                    // More aggressive noise floor (0.05 instead of 0.025)
-                                    // This prevents background hum from keeping Google's voice activity listener open
-                                    if (peak > 0.05) {
+                                    // 0.04 represents a reasonable noise floor for typical laptop mics
+                                    if (peak > 0.04 && !isEchoGuardActive) {
                                         silenceStart = Date.now();
+                                        hasSpokenThisTurn = true;
                                     }
+                                    
                                     const msSinceLastLoudSound = Date.now() - silenceStart;
-                                    const isVADTruncated = msSinceLastLoudSound > 800; // If quiet for 800ms, force cut
-
-                                    // We rely on Gemini's native server-side VAD to detect turn completion
+                                    
+                                    // Let native VAD have the unaltered audio (no zero-padding)
                                     const resampledData = resample(rawData, nativeRate, 16000);
-
-                                    // Instead of completely halting transmission when it's quiet,
-                                    // we send literal pure silence (0) to trigger Gemini's VAD to respond instantly.
-                                    if (isEchoGuardActive || peak < 0.05 || isVADTruncated) {
-                                        resampledData.fill(0);
-                                    }
-
                                     const { base64 } = floatTo16BitPCM(resampledData);
 
                                     ws.send(JSON.stringify({
@@ -402,6 +395,16 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                             }]
                                         }
                                     }));
+                                    
+                                    // CLIENT VAD: If the user spoke, and has been quiet for 1.25s, FORCE turn complete
+                                    if (hasSpokenThisTurn && msSinceLastLoudSound > 1250) {
+                                        log("User paused for 1.25s. Forcing TurnComplete to reduce latency.");
+                                        ws.send(JSON.stringify({
+                                            clientContent: { turnComplete: true }
+                                        }));
+                                        hasSpokenThisTurn = false; // reset until they speak again
+                                    }
+
                                     sentChunks++;
                                     if (sentChunks === 1) log("Signal Stream established.");
                                     if (sentChunks % 100 === 0) log(`WSS Activity: Uploading PCM Data (Peak: ${peak.toFixed(4)})...`);
