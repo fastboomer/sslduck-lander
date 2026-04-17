@@ -79,6 +79,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
     // Pro Audio State
     const audioQueueRef = useRef<Float32Array[]>([]);
     const nextScheduleTimeRef = useRef<number>(0);
+    const scheduledSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
     const jitterBufferThreshold = 6; // Increased from 3 to 6 to prevent static/crackling from network jitter
 
     const statusRef = useRef<string>('IDLE');
@@ -127,6 +128,10 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
         // Reset Pro Audio state
         audioQueueRef.current = [];
         nextScheduleTimeRef.current = 0;
+        scheduledSourcesRef.current.forEach(source => {
+            try { source.stop(); } catch(e) {}
+        });
+        scheduledSourcesRef.current.clear();
 
         if (!keepError) setError(null);
     }, [log, updateStatus]);
@@ -158,6 +163,12 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
 
             // Connect to persistent gain node (which connects to analyser and destination)
             source.connect(outGainRef.current);
+
+            source.onended = () => {
+                scheduledSourcesRef.current.delete(source);
+            };
+            scheduledSourcesRef.current.add(source);
+
             source.start(nextScheduleTimeRef.current);
 
             // Increment schedule time by exact duration of this buffer
@@ -275,7 +286,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                                 speechConfig: {
                                     voiceConfig: {
                                         prebuiltVoiceConfig: {
-                                            voiceName: 'Aoede'
+                                            voiceName: 'Kore'
                                         }
                                     }
                                 }
@@ -289,12 +300,12 @@ ${context?.gloAudioInstructions || 'Follow your strategic conversation script.'}
 ${context?.gloFacts ? `### FACTUAL REFERENCE DATA\n${context.gloFacts}` : ''}
 
 ### DATA MAPPING FOR VARIABLES
-To follow the script in 'glo-audio-discussion.md', map the following data to the bracketed variables:
-- **[first_name]**: Use "${context?.candidateName?.split(' ')[0] || 'Candidate'}".
-- **[job_title]**: Use "${context?.jobLink || 'Target Role'}".
-- **[target_company]**: Infer this from the Job Description or Analysis.
-- **[trait-1, 2, 3]**: Extract the 3 most important employer requirements from the **Evaluation Analysis** below.
-- **[trait_1, 2, 3]**: Extract the 3 best matching traits from the resume/analysis that match the above requirements.
+To follow the script in 'glo-audio-discussion.md', map the following data to the variables:
+- **{{first_name}}**: Use "${context?.candidateName?.split(' ')[0] || 'Candidate'}".
+- **{{job_title}}**: Use "${context?.jobLink || 'Target Role'}".
+- **{{target_company}}**: Infer this from the Job Description or Analysis.
+- **{{trait-1, 2, 3}}**: Extract the 3 most important employer requirements from the **Evaluation Analysis** below.
+- **{{trait_1, 2, 3}}**: Extract the 3 best matching traits from the resume/analysis that match the above requirements.
 
 ### SESSION DATA
 - **Full Candidate Name**: ${context?.candidateName || 'the candidate'}
@@ -354,19 +365,30 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                             }, 300);
 
                             let sentChunks = 0;
+                            let silenceStart = Date.now();
+                            let hasSpokenThisTurn = false;
+
                             const handleInputBuffer = (rawData: Float32Array, peak: number) => {
                                 if (ws.readyState === WebSocket.OPEN && statusRef.current === 'ACTIVE') {
                                     setMicPeak(peak);
 
                                     const timeSinceGloSpoke = Date.now() - lastGloSpeechTimeRef.current;
                                     const isEchoGuardActive = timeSinceGloSpoke < 2000;
-                                    const isNoiseGated = peak < 0.025;
+                                    
+                                    // More aggressive noise floor (0.05 instead of 0.025)
+                                    // This prevents background hum from keeping Google's voice activity listener open
+                                    if (peak > 0.05) {
+                                        silenceStart = Date.now();
+                                    }
+                                    const msSinceLastLoudSound = Date.now() - silenceStart;
+                                    const isVADTruncated = msSinceLastLoudSound > 800; // If quiet for 800ms, force cut
 
+                                    // We rely on Gemini's native server-side VAD to detect turn completion
                                     const resampledData = resample(rawData, nativeRate, 16000);
 
-                                    // Instead of completely halting transmission when it's quiet (which breaks Gemini's VAD and makes it wait forever),
-                                    // we send literal silence (0) to prevent echo bleed while letting Gemini know the user stopped talking.
-                                    if (isEchoGuardActive || isNoiseGated) {
+                                    // Instead of completely halting transmission when it's quiet,
+                                    // we send literal pure silence (0) to trigger Gemini's VAD to respond instantly.
+                                    if (isEchoGuardActive || peak < 0.05 || isVADTruncated) {
                                         resampledData.fill(0);
                                     }
 
@@ -455,6 +477,11 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                 log('Glo Interrupted (Queue Cleared).');
                                 audioQueueRef.current = [];
                             }
+                            // IMMEDIATELY stop currently playing audio nodes to prevent double voices overlap
+                            scheduledSourcesRef.current.forEach(source => {
+                                try { source.stop(); } catch(e) {}
+                            });
+                            scheduledSourcesRef.current.clear();
                             nextScheduleTimeRef.current = 0;
                             setVolume(0);
                         }

@@ -1,6 +1,13 @@
 import { Resend } from 'resend';
+import { marked } from 'marked';
 
-export async function sendGapReport(to: string, candidateName: string, content: string | Buffer, filename: string) {
+export async function sendGapReport(
+    to: string | string[], 
+    candidateName: string, 
+    content: string | Buffer, 
+    filename: string,
+    bcc?: string | string[]
+) {
     try {
         const apiKey = process.env.RESEND_API_KEY || "";
         if (!apiKey) {
@@ -8,27 +15,38 @@ export async function sendGapReport(to: string, candidateName: string, content: 
             return { success: false, error: 'Email configuration missing' };
         }
         const resend = new Resend(apiKey);
-        console.log(`[MAIL] Sending GAP Report for ${candidateName} to ${to}...`);
+        console.log(`[MAIL] Sending Suitability Study for ${candidateName} to ${to}...`);
 
         const isBuffer = Buffer.isBuffer(content);
-        const attachmentName = isBuffer ? `${filename}.docx` : `${filename}.md`;
 
-        // Ensure CRLF newlines so plain text editors (like Notepad) display the markdown cleanly
-        const parsedContent = isBuffer
-            ? content
-            : Buffer.from((content as string).replace(/(?<!\r)\n/g, '\r\n'), 'utf-8');
+        // Open wrapper div — no greeting, the cover letter already opens with "Dear [name]"
+        let htmlBody = `<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px; line-height: 1.7; color: #1a1a1a; max-width: 860px; margin: 0 auto; padding: 20px;">`;
+        
+        if (!isBuffer) {
+            // Strip any XML marker tags the LLM outputs literally (e.g. <cover>, </cover>)
+            const cleanedContent = (content as string).replace(/<\/?cover>/gi, '').trim();
+            const reportHtml = await marked.parse(cleanedContent, { breaks: true });
+            htmlBody += reportHtml;
+        } else {
+            htmlBody += `<p>Please find the attached formatted report.</p>`;
+        }
+
+        htmlBody += `<br><hr style="margin: 20px 0;"/><p style="font-size:14px;">Best regards,<br><b>The SSLDUCK Team</b></p></div>`;
 
         const { data, error } = await resend.emails.send({
-            from: 'SSLDUCK Reports <reports@sslduck.net>', // Replaced with a placeholder/proper domain if verified
-            to: [to],
-            subject: `GAP Analysis Report: ${candidateName}`,
-            text: `Please find attached the GAP Analysis report for ${candidateName}.`,
-            attachments: [
-                {
-                    filename: attachmentName,
-                    content: parsedContent,
-                },
-            ],
+            from: 'SSLDUCK Reports <reports@sslduck.net>',
+            to: Array.isArray(to) ? to : [to],
+            ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
+            subject: `Suitability Study: ${candidateName}`,
+            html: htmlBody,
+            ...(isBuffer ? {
+                attachments: [
+                    {
+                        filename: `${filename}.docx`,
+                        content: content,
+                    },
+                ]
+            } : {})
         });
 
         if (error) {

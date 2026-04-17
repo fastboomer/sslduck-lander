@@ -73,7 +73,7 @@ export async function createGapDoc(analysis: string, companyName: string): Promi
             properties: {},
             children: [
                 new Paragraph({
-                    text: `GAP Analysis: ${companyName}`,
+                    text: `Suitability Study: ${companyName}`,
                     heading: HeadingLevel.HEADING_1,
                     spacing: { after: 400 }
                 }),

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, FileText, Send, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -15,8 +15,28 @@ export const ResumeOfferCard: React.FC = () => {
     const [resumeFile, setResumeFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [progress, setProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isProcessing) {
+            setProgress(0);
+            interval = setInterval(() => {
+                setProgress((prev) => {
+                    // Surge ahead quickly at first, then slow down near the end
+                    if (prev < 60) return prev + Math.random() * 8 + 2;
+                    if (prev < 85) return prev + Math.random() * 3 + 1;
+                    if (prev < 98) return prev + Math.random() * 0.5;
+                    return prev;
+                });
+            }, 600);
+        } else {
+            setProgress(0);
+        }
+        return () => clearInterval(interval);
+    }, [isProcessing]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         console.log("[DEBUG] ResumeOfferCard submission started. Version: 12");
@@ -191,6 +211,29 @@ export const ResumeOfferCard: React.FC = () => {
                                 </>
                             )}
                         </button>
+
+                        {isProcessing && (
+                            <div className="w-full pt-2 space-y-3">
+                                <div className="h-2 w-full bg-royal-blue/10 rounded-full overflow-hidden relative shadow-inner">
+                                    <div 
+                                        className="h-full bg-royal-blue absolute top-0 left-0 transition-all duration-300 ease-out"
+                                        style={{ width: `${progress}%` }}
+                                    >
+                                        {/* Optional subtle shimmer over the filled portion */}
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent w-full -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center text-xs font-bold text-royal-blue/60 tracking-widest uppercase">
+                                    <p className="animate-pulse">Compiling your Suitability Study...</p>
+                                    <p>{Math.round(progress)}%</p>
+                                </div>
+                                <style>{`
+                                    @keyframes shimmer {
+                                        100% { transform: translateX(100%); }
+                                    }
+                                `}</style>
+                            </div>
+                        )}
                     </form>
                 </div>
 

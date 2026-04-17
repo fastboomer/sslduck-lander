@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,10 +23,35 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
         let nextScheduleTime = 0;
         let isSetupComplete = false;
         let hasStarted = false;
+        let idleTimeout: NodeJS.Timeout | null = null;
+        let actualCompletionTimeout: NodeJS.Timeout | null = null;
+
+        const clearTimeouts = () => {
+            if (idleTimeout) clearTimeout(idleTimeout);
+            if (actualCompletionTimeout) clearTimeout(actualCompletionTimeout);
+        };
+
+        const scheduleEnd = () => {
+            const timeRemaining = nextScheduleTime - (actx?.currentTime || 0);
+            actualCompletionTimeout = setTimeout(() => {
+                onLog('TTS Audio playback finished.');
+                cleanup();
+                onEnd();
+                actx?.close().catch(() => {});
+            }, Math.max(0, timeRemaining * 1000) + 200);
+        };
+
+        const resetIdleTimer = () => {
+            clearTimeouts();
+            idleTimeout = setTimeout(() => {
+                onLog('TTS Stream Idle, scheduling playback completion...');
+                scheduleEnd();
+            }, 2000); // Wait 2s without chunks to assume stream done
+        };
+
         const cleanup = () => {
+            clearTimeouts();
             if (ws.readyState === WebSocket.OPEN) ws.close();
-            // We do not close the AudioContext immediately to let audio finish playing, 
-            // but we call onEnd after a reasonable timeout if no more audio comes.
         };
         if (cancelRef) {
             cancelRef.current = () => {
@@ -104,20 +129,14 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
                             if (nextScheduleTime < now) nextScheduleTime = now + 0.05;
                             source.start(nextScheduleTime);
                             nextScheduleTime += buffer.duration;
+                            resetIdleTimer();
                         }
                     }
                     const turnComplete = serverContent.turnComplete || serverContent.turn_complete;
                     if (turnComplete) {
-                        onLog('TTS Turn Complete. closing WS in 1s...');
-                        setTimeout(() => {
-                            cleanup();
-                            // Wait for audio to finish playing before calling onEnd
-                            const timeRemaining = nextScheduleTime - (actx?.currentTime || 0);
-                            setTimeout(() => {
-                                onEnd();
-                                actx?.close().catch(() => { });
-                            }, Math.max(0, timeRemaining * 1000) + 200);
-                        }, 1000);
+                        onLog('Explicit TTS Turn Complete received.');
+                        clearTimeouts();
+                        scheduleEnd();
                     }
                 }
 

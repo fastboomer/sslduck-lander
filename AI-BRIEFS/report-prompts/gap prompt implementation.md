@@ -1,8 +1,8 @@
   
 USER INPUT
 
-1) User has 3 inputs: RESUME (upload pdf, docx, txt) **REQUIRED** max 2 uploads  
-2) User inputs JOB REQUIREMENTS either 1\. upload pdf, docx, txt; or 2\. url; or 3\. paste in box **REQUIRED** max 2 uploads  
+1) User has 2 inputs: RESUME (upload pdf, docx, txt) **REQUIRED** max 2 uploads  
+2) User inputs JOB REQUIREMENTS either 1\. upload pdf, docx, txt; or 2\. url; or 3\. paste in box **REQUIRED** max 2 uploads.
    
 
 PROCESS  

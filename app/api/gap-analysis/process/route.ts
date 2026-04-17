@@ -60,44 +60,75 @@ export async function POST(req: NextRequest) {
         if (!combinedResumeText.trim()) throw new Error("Resume content is empty.");
         if (!combinedReqText.trim() && !reqUrl) throw new Error("Requirement content is empty.");
 
-        // 2. Get Job Title/Link for Payload
-        console.log("[GAP_PROCESS] Summarizing job requirements...");
-        let jobLink = reqUrl || '';
-        if (!jobLink && combinedReqText) {
-            try {
-                const { text: summary } = await generateText({
-                    model: googleAI('gemini-2.0-flash-001'),
-                    prompt: `Summarize this job description into one short sentence (e.g., 'Senior Dev Role at Acme Corp'):\n\n${combinedReqText.substring(0, 1000)}`,
-                });
-                jobLink = summary.trim();
-            } catch (err) {
-                console.error("Summary failed, using default:", err);
-                jobLink = "Career Opportunity";
-            }
+        // 2. Extract Clean Job Title and Employer Name
+        console.log("[GAP_PROCESS] Extracting job title and employer from requirements...");
+        let targetJobTitle = "Career Opportunity";
+        let targetCompany = "Target Employer";
+        try {
+            const { text: jobExtract } = await generateText({
+                model: googleAI('gemini-2.0-flash-001'),
+                prompt: `Read this job description and extract ONLY two things. Return a JSON object with exactly two keys:\n- "job_title": the exact job title (short, e.g. "Medical Science Liaison")\n- "employer": the employer/company name (short, e.g. "Vor Biopharma")\n\nReturn ONLY the JSON object, nothing else.\n\n${combinedReqText.substring(0, 1500)}`,
+            });
+            const jobData = JSON.parse(jobExtract.replace(/```json/g, '').replace(/```/g, '').trim());
+            if (jobData.job_title) targetJobTitle = jobData.job_title.trim();
+            if (jobData.employer) targetCompany = jobData.employer.trim();
+        } catch (err) {
+            console.error("Job extraction failed, using defaults:", err);
         }
 
-        const targetCompany = jobLink.split(' at ')[1] || jobLink;
-        const targetJobTitle = jobLink.split(' at ')[0] || jobLink;
 
-        // 3. Load Prompt Templates
+        // 3. Extract Candidate Name and Email (Best Effort) FIRST
+        console.log("[GAP_PROCESS] Extracting candidate name and email...");
+        let candidateName = "Candidate";
+        let extractedEmail = contactEmail;
+        let extractedPhone = '';
+        let extractedContactInfo = '';
+        try {
+            const { text: extraction } = await generateText({
+                model: googleAI('gemini-2.0-flash-001'),
+                prompt: `Analyze this resume and extract the candidate's full name, email address, phone number, and city/state. Return ONLY a JSON object with keys "name", "email", "phone", and "contact_info". If missing, leave empty strings:\n\n${combinedResumeText.substring(0, 1500)}`,
+            });
+            const extracted = JSON.parse(extraction.replace(/```json/g, '').replace(/```/g, '').trim());
+            if (extracted.name) candidateName = extracted.name;
+            if (!extractedEmail && extracted.email) {
+                const matched = extracted.email.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+                if (matched) extractedEmail = matched[0];
+            }
+            if (extracted.phone) extractedPhone = extracted.phone.trim();
+            if (extracted.contact_info) extractedContactInfo = extracted.contact_info.trim();
+        } catch (err) {
+            console.error("Name/Email/Phone/Location extraction failed:", err);
+        }
+        
+        const firstName = candidateName.split(' ')[0] || "Candidate";
+        const lastName = candidateName.split(' ').slice(1).join(' ') || "";
+
+        // 4. Load Prompt Templates
         console.log("[GAP_PROCESS] Loading prompt templates...");
-        const promptPath = path.join(process.cwd(), 'AI-BRIEFS', 'report-prompts', 'gap-analysis-instructions.md');
+        const promptPath = path.join(process.cwd(), 'AI-BRIEFS', 'suitability-prompt', '1-SUITABILITY-STUDY-PROMPT-SSLDUCKNET.md');
         const examplePath = path.join(process.cwd(), 'AI-BRIEFS', 'report-prompts', 'gap-report-example.md');
 
         if (!fs.existsSync(promptPath)) throw new Error("Prompt template missing.");
         let promptTemplate = fs.readFileSync(promptPath, 'utf8');
         let exampleTemplate = fs.existsSync(examplePath) ? fs.readFileSync(examplePath, 'utf8') : '';
 
-        // 4. Prepare Final Prompt
+        // 5. Prepare Final Prompt
         const finalPrompt = promptTemplate
-            .replace(/\[first_name\]/g, "Candidate") // Defaulting placeholder
-            .replace(/\[job_title\]/g, targetJobTitle)
-            .replace(/\[target_company\]/g, targetCompany)
+            .replace(/\{\{\s*first\\?_name\s*\}\}/g, firstName)
+            .replace(/\{\{\s*last\\?_name\s*\}\}/g, lastName)
+            .replace(/\{\{\s*contact\\?_info\s*\}\}/g, extractedContactInfo || "City, State Not Provided")
+            .replace(/\{\{\s*email\s*\}\}/g, extractedEmail || "Email Not Provided")
+            .replace(/\{\{\s*phone\\?_number\s*\}\}/g, extractedPhone || "Phone Not Found")
+            .replace(/\[\s*first\\?_name\s*\]/g, firstName) // In case old variables still exist
+            .replace(/\{\{\s*job\\?_title\s*\}\}/g, targetJobTitle)
+            .replace(/\[\s*job\\?_title\s*\]/g, targetJobTitle)
+            .replace(/\{\{\s*employer\s*\}\}/g, targetCompany)
+            .replace(/\[\s*target\\?_company\s*\]/g, targetCompany)
             .replace(/<requirements>[\s\S]*?<\/requirements>/, `<requirements>\n${combinedReqText}\n</requirements>`)
             .replace(/<resume>[\s\S]*?<\/resume>/, `<resume>\n${combinedResumeText}\n</resume>`)
             .replace(/<example>[\s\S]*?<\/example>/, `<example>\n${exampleTemplate}\n</example>`);
 
-        // 5. Execute AI (Pro with Flash fallback)
+        // 6. Execute AI (Pro with Flash fallback)
         console.log("[GAP_PROCESS] Executing GAP Analysis...");
         let analysis = '';
 
@@ -123,19 +154,6 @@ export async function POST(req: NextRequest) {
 
         if (!analysis.trim()) throw new Error("AI generated an empty analysis.");
 
-        // 6. Extract Candidate Name (Best Effort)
-        console.log("[GAP_PROCESS] Extracting candidate name...");
-        let candidateName = "Candidate";
-        try {
-            const { text: nameExtraction } = await generateText({
-                model: googleAI('gemini-2.0-flash-001'),
-                prompt: `Extract the candidate's full name from this resume text. Return ONLY the name:\n\n${combinedResumeText.substring(0, 1000)}`,
-            });
-            candidateName = nameExtraction.trim() || "Candidate";
-        } catch (err) {
-            console.error("Name extraction failed:", err);
-        }
-
         // 7. Save to Firestore (Audit Log)
         console.log("[GAP_PROCESS] Saving to Firestore...");
         const reportId = `gap-${Date.now()}`;
@@ -144,7 +162,7 @@ export async function POST(req: NextRequest) {
                 await setDoc(doc(db, 'gap-reports', reportId), {
                     reportId,
                     candidateName,
-                    jobLink,
+                    jobLink: `${targetJobTitle} at ${targetCompany}`,
                     analysis,
                     resumeText: combinedResumeText,
                     jobDescription: combinedReqText,
@@ -163,9 +181,13 @@ export async function POST(req: NextRequest) {
         // 8. Send to Webhook (Internal GAP Dispatch)
         const payload = {
             name: candidateName,
-            jobLink: jobLink,
+            jobLink: `${targetJobTitle} at ${targetCompany}`,
             styledReport: analysis
         };
+        // [MODIFIED]: We are completely disabling the Google Apps Script Webhook 
+        // because it ignores all styling and target emails. We are now using Resend exclusively.
+        console.log("[GAP_PROCESS] Webhook dispatch is disabled. Sending emails via Resend exclusively.");
+        /*
         console.log("[GAP_PROCESS] Dispatching to Webhook. Payload size:", JSON.stringify(payload).length);
         const webhookUrl = 'https://script.google.com/macros/s/AKfycbztlk4VOMWB8A6Wh_IUobjZ5dho_KYp-EgtLTE-mWogE26FNjmKzM8C1vxqpHqcMvLb/exec';
 
@@ -186,6 +208,7 @@ export async function POST(req: NextRequest) {
         } catch (webhookErr: any) {
             console.error("Failed to send to webhook:", webhookErr.message);
         }
+        */
 
         // 9. Generate Word Document and Save to GAP-USERS
         console.log("[GAP_PROCESS] Generating Word document...");
@@ -214,15 +237,16 @@ export async function POST(req: NextRequest) {
             fs.writeFileSync(mdFilePath, analysis);
             console.log("[GAP_PROCESS] Saved AI-ready Markdown to:", mdFilePath);
 
-            // 10. Email to Glenn
-            console.log("[GAP_PROCESS] Emailing report to Glenn...");
-            await sendGapReport('glenn@sslduck.net', candidateName, analysis, filename);
-
-            // Also email to user if they provided one
-            if (contactEmail && contactEmail.includes('@')) {
-                console.log("[GAP_PROCESS] Emailing copy to user:", contactEmail);
-                await sendGapReport(contactEmail, candidateName, analysis, filename);
-            }
+            // 10. Email to User (with CC to Glenn)
+            console.log("[GAP_PROCESS] Emailing report...");
+            const targetEmail = (extractedEmail && extractedEmail.trim().includes('@')) ? extractedEmail.trim() : 'glenn@sslduck.net';
+            const bccEmail = 'glenn@sslduck.net';
+            
+            // Only BCC if the target email isn't already the admin email
+            const bccParams = targetEmail.toLowerCase() === bccEmail.toLowerCase() ? undefined : bccEmail;
+            
+            // Send analysis instead of docBuffer so mail.ts generates an HTML email body!
+            await sendGapReport(targetEmail, candidateName, analysis, filename, bccParams);
         } catch (exportErr: any) {
             console.error("[GAP_PROCESS] Export/Email failed:", exportErr);
         }

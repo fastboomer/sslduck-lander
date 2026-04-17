@@ -1,4 +1,4 @@
-# **GAP Analysis**
+# **Suitability Study**
 
 ## **Goals And Problems Profile for [*target company*]**
 
