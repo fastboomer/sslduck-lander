@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, PhoneOff, Loader2, Sparkles, AlertCircle, Info, CheckCircle2, X, RefreshCw, Zap, Volume2, ChevronDown } from 'lucide-react';
-import { AudioAura } from './AudioAura';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import { PostGloClose } from './PostGloClose';
 
@@ -572,7 +571,6 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                             />
                         )}
                     </AnimatePresence>
-                    <AudioAura isActive={!hasSessionEnded && (isActive || isPreTalk)} volume={isPreTalk ? 0.3 : volume} />
 
 
                     {/* Name bar hidden in mini-mode — shows only Glo's face */}
