@@ -3,6 +3,7 @@ console.log("[GAP_ROUTE] Module Loaded");
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Max duration for Vercel Hobby tier is usually 60s (Pro is up to 300s)
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { db } from '@/app/lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
         if (resumes.length === 0 && !resumeText.trim()) throw new Error("No resume provided (Upload or Paste required).");
 
         // 1. Extract Text
-        console.log("[GAP_PROCESS] Extracting text from files...");
+        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Extracting text from files...`);
         let combinedResumeText = '';
         try {
             for (const file of resumes) {
@@ -61,35 +62,41 @@ export async function POST(req: NextRequest) {
         if (!combinedReqText.trim() && !reqUrl) throw new Error("Requirement content is empty.");
 
         // 2. Extract Clean Job Title and Employer Name
-        console.log("[GAP_PROCESS] Extracting job title and employer from requirements...");
+        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Extracting job title and employer from requirements with Gemini Flash...`);
         let targetJobTitle = "Career Opportunity";
         let targetCompany = "Target Employer";
         try {
             const { text: jobExtract } = await generateText({
-                model: googleAI('gemini-2.0-flash-001'),
-                prompt: `Read this job description and extract ONLY two things. Return a JSON object with exactly two keys:\n- "job_title": the exact job title (short, e.g. "Medical Science Liaison")\n- "employer": the employer/company name (short, e.g. "Vor Biopharma")\n\nReturn ONLY the JSON object, nothing else.\n\n${combinedReqText.substring(0, 1500)}`,
+                model: googleAI('gemini-2.5-flash'),
+                prompt: `Read this job description and extract ONLY two things. Return ONLY a valid JSON object with exactly two keys:\n- "job_title": the exact job title (short, e.g. "Medical Science Liaison")\n- "employer": the employer/company name (short, e.g. "Vor Biopharma"). If the employer is not mentioned, use "Target Employer".\n\nDo NOT include any conversational filler, markdown, or greetings. Output ONLY JSON.\n\n${combinedReqText.substring(0, 1500)}`,
             });
-            const jobData = JSON.parse(jobExtract.replace(/```json/g, '').replace(/```/g, '').trim());
+            console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Gemini Flash returned Job Title Payload.`);
+            const jsonMatch = jobExtract.match(/\{[\s\S]*\}/);
+            const rawJsonText = jsonMatch ? jsonMatch[0] : jobExtract.replace(/```json/g, '').replace(/```/g, '');
+            const jobData = JSON.parse(rawJsonText.trim());
             if (jobData.job_title) targetJobTitle = jobData.job_title.trim();
             if (jobData.employer) targetCompany = jobData.employer.trim();
         } catch (err) {
-            console.error("Job extraction failed, using defaults:", err);
+            console.error(`[GAP_PROCESS] [${new Date().toISOString()}] Job extraction failed, using defaults:`, err);
         }
 
 
         // 3. Extract Candidate Name and Email (Best Effort) FIRST
-        console.log("[GAP_PROCESS] Extracting candidate name and email...");
+        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Extracting candidate info with Gemini Flash...`);
         let candidateName = "Candidate";
         let extractedEmail = contactEmail;
         let extractedPhone = '';
         let extractedContactInfo = '';
         try {
             const { text: extraction } = await generateText({
-                model: googleAI('gemini-2.0-flash-001'),
-                prompt: `Analyze this resume and extract the candidate's full name, email address, phone number, and city/state. Return ONLY a JSON object with keys "name", "email", "phone", and "contact_info". If missing, leave empty strings:\n\n${combinedResumeText.substring(0, 1500)}`,
+                model: googleAI('gemini-2.5-flash'),
+                prompt: `Analyze this resume text and extract the candidate's exact full name (First and Last name ONLY, exclude any location, city, state, or titles), email address, phone number, and city/state. Return ONLY a valid JSON object with exactly these keys: "name", "email", "phone", and "contact_info". If missing, leave empty strings. Do NOT include any conversational filler, greetings, or markdown tags.\n\n${combinedResumeText.substring(0, 1500)}`,
             });
-            const extracted = JSON.parse(extraction.replace(/```json/g, '').replace(/```/g, '').trim());
-            if (extracted.name) candidateName = extracted.name;
+            console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Gemini Flash returned Candidate Payload.`);
+            const jsonMatch = extraction.match(/\{[\s\S]*\}/);
+            const rawJsonText = jsonMatch ? jsonMatch[0] : extraction.replace(/```json/g, '').replace(/```/g, '');
+            const extracted = JSON.parse(rawJsonText.trim());
+            if (extracted.name) candidateName = extracted.name.replace(/([A-Za-z\-]+)\s+([A-Za-z\-]+)\s+.*$/g, '$1 $2').trim();
             if (!extractedEmail && extracted.email) {
                 const matched = extracted.email.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
                 if (matched) extractedEmail = matched[0];
@@ -97,14 +104,28 @@ export async function POST(req: NextRequest) {
             if (extracted.phone) extractedPhone = extracted.phone.trim();
             if (extracted.contact_info) extractedContactInfo = extracted.contact_info.trim();
         } catch (err) {
-            console.error("Name/Email/Phone/Location extraction failed:", err);
+            console.error(`[GAP_PROCESS] [${new Date().toISOString()}] Name/Email extraction failed:`, err);
+            // Fallback heuristic: Try to grab the first substantive line of the resume as the name if AI failed
+            try {
+                const lines = combinedResumeText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                if (lines.length > 0 && candidateName === "Candidate") {
+                    let possibleName = lines[0].substring(0, 40).replace(/resume|cv|curriculum vitae/i, '').trim();
+                    // Clean up fallback hallucination
+                    possibleName = possibleName.split(',')[0].split('|')[0].trim();
+                     if (possibleName.length > 2 && !possibleName.includes('@')) {
+                        candidateName = possibleName;
+                    }
+                }
+            } catch (fallbackErr) {
+                console.error("Fallback name extraction failed:", fallbackErr);
+            }
         }
         
         const firstName = candidateName.split(' ')[0] || "Candidate";
         const lastName = candidateName.split(' ').slice(1).join(' ') || "";
 
         // 4. Load Prompt Templates
-        console.log("[GAP_PROCESS] Loading prompt templates...");
+        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Loading prompt templates...`);
         const promptPath = path.join(process.cwd(), 'AI-BRIEFS', 'suitability-prompt', '1-SUITABILITY-STUDY-PROMPT-SSLDUCKNET.md');
         const examplePath = path.join(process.cwd(), 'AI-BRIEFS', 'report-prompts', 'gap-report-example.md');
 
@@ -113,7 +134,7 @@ export async function POST(req: NextRequest) {
         let exampleTemplate = fs.existsSync(examplePath) ? fs.readFileSync(examplePath, 'utf8') : '';
 
         // 5. Prepare Final Prompt
-        const finalPrompt = promptTemplate
+        const finalPromptBase = promptTemplate
             .replace(/\{\{\s*first\\?_name\s*\}\}/g, firstName)
             .replace(/\{\{\s*last\\?_name\s*\}\}/g, lastName)
             .replace(/\{\{\s*contact\\?_info\s*\}\}/g, extractedContactInfo || "City, State Not Provided")
@@ -124,32 +145,26 @@ export async function POST(req: NextRequest) {
             .replace(/\[\s*job\\?_title\s*\]/g, targetJobTitle)
             .replace(/\{\{\s*employer\s*\}\}/g, targetCompany)
             .replace(/\[\s*target\\?_company\s*\]/g, targetCompany)
-            .replace(/<requirements>[\s\S]*?<\/requirements>/, `<requirements>\n${combinedReqText}\n</requirements>`)
-            .replace(/<resume>[\s\S]*?<\/resume>/, `<resume>\n${combinedResumeText}\n</resume>`)
-            .replace(/<example>[\s\S]*?<\/example>/, `<example>\n${exampleTemplate}\n</example>`);
+            .replace(/<example>[\s\S]*?<\/example>/gi, `<example>\n${exampleTemplate}\n</example>`);
+
+        // Safely enforce tags at the very bottom since they may have failed to replace if malformed
+        const finalPrompt = finalPromptBase + `\n\n<job-description>\n${combinedReqText}\n</job-description>\n\n<requirements>\n${combinedReqText}\n</requirements>\n\n<resume>\n${combinedResumeText}\n</resume>`;
 
         // 6. Execute AI (Pro with Flash fallback)
-        console.log("[GAP_PROCESS] Executing GAP Analysis...");
+        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Executing GAP Analysis with Claude...`);
         let analysis = '';
 
         try {
             const { text } = await generateText({
-                model: googleAI('gemini-1.5-pro-002'),
+                model: googleAI('gemini-2.5-pro'),
                 prompt: finalPrompt,
             });
             analysis = text;
-        } catch (proErr: any) {
-            console.error("Gemini 1.5 Pro failed, trying 2.0 Flash...", proErr.message);
-            try {
-                const { text } = await generateText({
-                    model: googleAI('gemini-2.0-flash-001'),
-                    prompt: finalPrompt,
-                });
-                analysis = text;
-            } catch (flashErr: any) {
-                console.error("Gemini 2.0 Flash also failed:", flashErr.message);
-                throw new Error(`AI Analysis failed: ${flashErr.message}`);
-            }
+            console.log(`[GAP_PROCESS] [${new Date().toISOString()}] GAP Analysis Execution Complete.`);
+        } catch (error: any) {
+            console.error(`[GAP_PROCESS] [${new Date().toISOString()}] AI processing failed:`, error);
+            const detailedError = error.cause ? error.cause.message || error.cause : JSON.stringify(error, Object.getOwnPropertyNames(error));
+            throw new Error(`AI Analysis failed: ${detailedError}`);
         }
 
         if (!analysis.trim()) throw new Error("AI generated an empty analysis.");

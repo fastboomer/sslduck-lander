@@ -157,8 +157,8 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
 
             // If we've fallen behind (gap in network), reset schedule time
             if (nextScheduleTimeRef.current < now) {
-                // Buffer by 150ms to allow for browser processing jitter and avoid static
-                nextScheduleTimeRef.current = now + 0.15;
+                // Start almost immediately (20ms buffer) to avoid large scratchy audio gaps
+                nextScheduleTimeRef.current = now + 0.02;
             }
 
             // Connect to persistent gain node (which connects to analyser and destination)
@@ -199,7 +199,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
         updateStatus('IDLE');
     }, [updateStatus]);
 
-    const startSession = useCallback(async (selectedDeviceId?: string) => {
+        const startSession = useCallback(async (selectedDeviceId?: string) => {
         if (!apiKey) { log('API Key missing.'); setError('API Key missing.'); return; }
         try {
             setError(null);
@@ -278,6 +278,16 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                     updateStatus('HANDSHAKING');
                     log('WebSocket Open. Sending Setup (Glo 2.0)...');
 
+                    const firstName = context?.candidateName?.split(' ')[0] || 'Candidate';
+                    const jobTitle = context?.jobLink ? context.jobLink.split(' at ')[0] : 'Target Role';
+                    const targetCompany = context?.jobLink && context.jobLink.includes(' at ') ? context.jobLink.split(' at ')[1] : 'the target employer';
+                    
+                    let audioInstructions = context?.gloAudioInstructions || 'Follow your strategic conversation script.';
+                    audioInstructions = audioInstructions
+                        .replace(/\{\{\s*first_name\s*\}\}/g, firstName)
+                        .replace(/\{\{\s*job_title\s*\}\}/g, jobTitle)
+                        .replace(/\{\{\s*target_company\s*\}\}/g, targetCompany);
+
                     ws.send(JSON.stringify({
                         setup: {
                             model: 'models/gemini-2.5-flash-native-audio-latest',
@@ -295,23 +305,15 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                                 parts: [{
                                     text: `${context?.gloPersona || 'You are Glo, a high-performing career strategist.'}
 
-${context?.gloAudioInstructions || 'Follow your strategic conversation script.'}
+${audioInstructions}
 
 ${context?.gloFacts ? `### FACTUAL REFERENCE DATA\n${context.gloFacts}` : ''}
 
-### DATA MAPPING FOR VARIABLES
-To follow the script in 'glo-audio-discussion.md', map the following data to the variables:
-- **{{first_name}}**: Use "${context?.candidateName?.split(' ')[0] || 'Candidate'}".
-- **{{job_title}}**: Use "${context?.jobLink || 'Target Role'}".
-- **{{target_company}}**: Infer this from the Job Description or Analysis.
-- **{{trait-1, 2, 3}}**: Extract the 3 most important employer requirements from the **Evaluation Analysis** below.
-- **{{trait_1, 2, 3}}**: Extract the 3 best matching traits from the resume/analysis that match the above requirements.
-
 ### SESSION DATA
 - **Full Candidate Name**: ${context?.candidateName || 'the candidate'}
-- **Target Role/Title**: ${context?.jobLink || 'Professional Role'}
-- **Job Description Snippet**: ${context?.jobDescription?.substring(0, 1000) || 'See analysis for requirements.'}
 - **Evaluation Analysis (Source for Traits)**: ${context?.analysis || 'Analysis pending.'}
+
+To follow the script, map the following data to the remaining traits variables (like {{trait-1}} and {{rtraits_1}}): Extract the 3 most important employer requirements from the Evaluation Analysis, and the 3 best matching traits from the resume/analysis that match those requirements.
 
 STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the persona and script provided.
 `
@@ -372,11 +374,19 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                 if (ws.readyState === WebSocket.OPEN && statusRef.current === 'ACTIVE') {
                                     setMicPeak(peak);
 
-                                    const timeSinceGloSpoke = Date.now() - lastGloSpeechTimeRef.current;
-                                    const isEchoGuardActive = timeSinceGloSpoke < 2000;
+                                    // Accurately determine if Glo is literally playing out of the speakers right now
+                                    let isGloCurrentlyPlaying = false;
+                                    if (audioContextRef.current) {
+                                        // Pad the schedule time with +0.5s to cover room echo tail and microphone lag
+                                        isGloCurrentlyPlaying = audioQueueRef.current.length > 0 || (nextScheduleTimeRef.current + 0.5) > audioContextRef.current.currentTime;
+                                    }
                                     
-                                    // 0.04 represents a reasonable noise floor for typical laptop mics
-                                    if (peak > 0.04 && !isEchoGuardActive) {
+                                    const timeSinceGloSpoke = Date.now() - lastGloSpeechTimeRef.current;
+                                    // Make the tail slightly shorter so it is more responsive when she finishes speaking
+                                    const isEchoGuardActive = isGloCurrentlyPlaying || (timeSinceGloSpoke < 1000);
+
+                                    // 0.02 represents an extremely sensitive noise floor to catch soft speech/laptop mics with built-in AGC
+                                    if (peak > 0.02 && !isEchoGuardActive) {
                                         silenceStart = Date.now();
                                         hasSpokenThisTurn = true;
                                     }
@@ -385,9 +395,8 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                     
                                     // True Client-Side VAD: Gate the websocket.
                                     // We only send audio to Google if we are actively speaking, OR we are in the 1.5s trailing edge.
-                                    // If we are completely quiet, we STOP sending realtimeInput packets entirely.
-                                    // This completely eliminates native VAD latency without triggering Code 1007 schema errors!
-                                    if (msSinceLastLoudSound < 1500) {
+                                    // Additionally, we ABSOLUTELY NEVER open the gate while the echo guard is active, protecting against accidental interruption loops!
+                                    if (msSinceLastLoudSound < 1500 && !isEchoGuardActive) {
                                         const resampledData = resample(rawData, nativeRate, 16000);
                                         const { base64 } = floatTo16BitPCM(resampledData);
 
@@ -399,8 +408,8 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                                 }]
                                             }
                                         }));
-                                    } else if (hasSpokenThisTurn) {
-                                        log("User paused cleanly. Audio gate closed to force server VAD execution.");
+                                    } else if (hasSpokenThisTurn && (msSinceLastLoudSound >= 1500 || isEchoGuardActive)) {
+                                        log("User paused or echo guard engaged. Audio gate closed to force server VAD execution.");
                                         hasSpokenThisTurn = false;
                                     }
 

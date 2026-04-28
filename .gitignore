@@ -1,4 +1,8 @@
 .vercel
 .env*.local
 .next/
-node_modules/
+node_modules/'nAI-BRIEFS/'nMember Control/*.json
+node_modules
+
+AI-BRIEFS/
+Member Control/*.json

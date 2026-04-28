@@ -21,22 +21,22 @@ export const ResumeOfferCard: React.FC = () => {
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (isProcessing) {
-            setProgress(0);
+        if (isProcessing && progress < 100) {
             interval = setInterval(() => {
                 setProgress((prev) => {
-                    // Surge ahead quickly at first, then slow down near the end
-                    if (prev < 60) return prev + Math.random() * 8 + 2;
-                    if (prev < 85) return prev + Math.random() * 3 + 1;
-                    if (prev < 98) return prev + Math.random() * 0.5;
-                    return prev;
+                    if (prev >= 100) return 100;
+                    // Extended timeline for Gemini 2.5 Pro
+                    if (prev < 20) return prev + Math.random() * 3 + 1;       // Fast start
+                    if (prev < 50) return prev + Math.random() * 1.5 + 0.5;   // Moderate processing
+                    if (prev < 80) return prev + Math.random() * 0.5 + 0.2;   // Heavy AI context mapping
+                    if (prev < 95) return prev + Math.random() * 0.1 + 0.05;  // Core Generation phase
+                    if (prev < 99.5) return prev + Math.random() * 0.02 + 0.01; // Finalizing output
+                    return 99.5;
                 });
-            }, 600);
-        } else {
-            setProgress(0);
+            }, 800);
         }
         return () => clearInterval(interval);
-    }, [isProcessing]);
+    }, [isProcessing, progress]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         console.log("[DEBUG] ResumeOfferCard submission started. Version: 12");
@@ -44,6 +44,7 @@ export const ResumeOfferCard: React.FC = () => {
         if (!resumeFile || !jobDescription) return;
 
         setIsProcessing(true);
+        setProgress(0);
         setError(null);
 
         try {
@@ -74,8 +75,14 @@ export const ResumeOfferCard: React.FC = () => {
             let result;
             try {
                 result = JSON.parse(responseText);
+                setProgress(100);
                 console.log("[DEBUG] Success! Redirecting to:", `/gap-analysis/success?reportId=${result.reportId}`);
-                router.push(`/gap-analysis/success?reportId=${result.reportId}`);
+                // Add a small delay so user sees 100% and success message
+                setTimeout(() => {
+                    router.push(`/gap-analysis/success?reportId=${result.reportId}`);
+                }, 800);
+                // Return here so we don't set isProcessing(false) -> avoids resetting progress bar
+                return;
             } catch (e) {
                 console.error("[DEBUG] JSON parse failure on success:", e);
                 throw new Error("Invalid response format from server. Please check terminal logs.");
@@ -83,8 +90,8 @@ export const ResumeOfferCard: React.FC = () => {
         } catch (err: any) {
             console.error("[DEBUG] Submit error:", err);
             setError(err.message || "Failed to process analysis. Please try again.");
-        } finally {
             setIsProcessing(false);
+            setProgress(0);
         }
     };
 
@@ -180,7 +187,7 @@ export const ResumeOfferCard: React.FC = () => {
                                 rows={5}
                                 value={jobDescription}
                                 onChange={(e) => setJobDescription(e.target.value)}
-                                placeholder="Place Employer's Complete Job Description Here... PRO TIP: Make sure you have included employer's name and Exact JobTitle."
+                                placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
                                 className="w-full bg-[#fcfcfc] border border-royal-blue/10 rounded-xl p-4 focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue outline-none transition-all placeholder:text-royal-blue/30 text-sm"
                             />
                         </div>
@@ -223,9 +230,16 @@ export const ResumeOfferCard: React.FC = () => {
                                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent w-full -translate-x-full animate-[shimmer_1.5s_infinite]" />
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center text-xs font-bold text-royal-blue/60 tracking-widest uppercase">
-                                    <p className="animate-pulse">Compiling your Suitability Study...</p>
-                                    <p>{Math.round(progress)}%</p>
+                                 <div className="flex justify-between items-center text-xs font-bold text-royal-blue/60 tracking-widest uppercase">
+                                    <p className="animate-pulse">
+                                        {progress < 20 ? "Extracting contact details & skills..." :
+                                         progress < 50 ? "Analyzing resume structure & formatting..." :
+                                         progress < 80 ? "Comparing candidate to job description..." :
+                                         progress < 95 ? "Drafting Cover Letter & Action Plan..." :
+                                         progress < 100 ? "Validating Output (Please wait up to 60s)..." :
+                                         "Success! Redirecting..."}
+                                    </p>
+                                    <p>{Math.floor(progress)}%</p>
                                 </div>
                                 <style>{`
                                     @keyframes shimmer {

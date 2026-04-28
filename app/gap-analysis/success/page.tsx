@@ -39,7 +39,7 @@ function GapSuccessContent() {
 
     useEffect(() => {
         if (candidateName && candidateName !== 'Candidate') {
-            setUserName(candidateName);
+            setUserName(candidateName.split(' ')[0]);
         }
     }, [candidateName]);
 
@@ -59,8 +59,8 @@ function GapSuccessContent() {
 
                     {/* Success Banner */}
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         className="bg-white border border-gray-200 shadow-xl rounded-3xl p-8 md:p-12"
                     >
                         <div className="flex flex-col md:flex-row gap-10 items-start">

@@ -37,7 +37,7 @@ export async function sendGapReport(
             from: 'SSLDUCK Reports <reports@sslduck.net>',
             to: Array.isArray(to) ? to : [to],
             ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
-            subject: `Suitability Study: ${candidateName}`,
+            subject: `Suitability Study: ${candidateName.split(' ')[0]}`,
             html: htmlBody,
             ...(isBuffer ? {
                 attachments: [

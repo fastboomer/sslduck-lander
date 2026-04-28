@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, PhoneOff, Loader2, Sparkles, AlertCircle, Info, CheckCircle2, X, RefreshCw, Zap, Volume2, ChevronDown } from 'lucide-react';
 import { AudioAura } from './AudioAura';
 import { useGeminiLive } from '../hooks/useGeminiLive';
+import { PostGloClose } from './PostGloClose';
 
 interface GloLiveHubProps {
     reportId: string;
@@ -65,6 +66,8 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
                 setup: {
                     model: 'models/gemini-2.5-flash-native-audio-latest', // Required for 2.0/2.5 Native Audio
                     generationConfig: {
+                        temperature: 0.1,
+                        topP: 0.05,
                         responseModalities: ['AUDIO'],
                         speechConfig: {
                             voiceConfig: {
@@ -170,11 +173,31 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string>('default');
     const [isSiteB] = useState(false); // Designation for Site B
+    const [hasSessionEnded, setHasSessionEnded] = useState(false);
+
+    useEffect(() => {
+        if (hasSessionEnded && reportId) {
+            sessionStorage.setItem(`gloSessionEnded_${reportId}`, 'true');
+        }
+    }, [hasSessionEnded, reportId]);
 
     // Pre-talk State
     const [isPreTalk, setIsPreTalk] = useState(true);
     const [preTalkCaption, setPreTalkCaption] = useState('Connecting to Simone...');
     const hasPlayedIntroRef = useRef(false);
+
+    // Sync state from sessionStorage after initial mount to avoid hydration mismatch
+    useEffect(() => {
+        if (typeof window !== 'undefined' && reportId) {
+            const ended = sessionStorage.getItem(`gloSessionEnded_${reportId}`) === 'true';
+            if (ended) {
+                setHasSessionEnded(true);
+                setIsPreTalk(false);
+                hasPlayedIntroRef.current = true;
+            }
+        }
+    }, [reportId]);
+
     const cancelTTSRef = useRef<(() => void) | null>(null);
 
     const skipIntro = useCallback(() => {
@@ -396,16 +419,21 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         }
     };
 
-    // State Sync - ONLY UPGRADE OR SHOW ERROR. NEVER AUTO-IDLE.
+    // State Sync 
+    const wasActiveRef = useRef(false);
     useEffect(() => {
         if (isActive) {
+            wasActiveRef.current = true;
             setStatus('ACTIVE');
         } else if (geminiError) {
             setStatus('ERROR');
             addLog(`Error detected: ${geminiError}`);
+        } else if (!isActive && wasActiveRef.current && status === 'ACTIVE') {
+            addLog("AI connection naturally terminated.");
+            wasActiveRef.current = false;
+            setTimeout(() => setHasSessionEnded(true), 3000);
         }
-        // Removed the auto-reset to 'IDLE'. The user must manually 'Close' or 'End' to return to IDLE.
-    }, [isActive, geminiError, addLog]);
+    }, [isActive, geminiError, addLog, status]);
 
     const handleStartSession = async () => {
         stopMicResources();
@@ -424,6 +452,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         setStatus('IDLE');
         setPreflightUserMicLevel(0);
         setLocalError(null);
+        setTimeout(() => setHasSessionEnded(true), 3000);
     }, [stopSession, resetGeminiError, stopMicResources, addLog]);
 
     const handleResetOnError = useCallback(() => {
@@ -441,15 +470,41 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         };
     }, [stopMicResources]);
 
+    // 3 Minute Abandonment Timer
+    useEffect(() => {
+        if (!hasSessionEnded) return;
+
+        const timer = setTimeout(() => {
+            const firstName = context?.candidateName?.split(' ')[0] || 'there';
+            const abandonText = `Hey ${firstName}, are you still there? Let me know if you need any help deciding on a package.`;
+            
+            playGeminiLiveTTS(
+                abandonText,
+                'Kore',
+                apiKey,
+                () => addLog('Abandonment TTS: Speaking.'),
+                () => addLog('Abandonment TTS: Finished.'),
+                addLog
+            );
+        }, 3 * 60 * 1000);
+
+        return () => clearTimeout(timer);
+    }, [hasSessionEnded, apiKey, addLog, context]);
+
     const displayError = geminiError || localError;
     const isShowingSessionUI = status === 'CONNECTING' || status === 'ACTIVE' || status === 'ERROR';
 
     // Mic level is either preflight meter or real-time peak from worklet
     const currentMicLevel = status === 'PREFLIGHT' ? preflightUserMicLevel : (isActive ? micPeak : 0);
 
+    const mainContainerClass = hasSessionEnded 
+        ? "fixed top-32 left-4 md:left-6 w-16 h-16 md:w-20 md:h-20 z-[200] transition-all duration-1000 ease-in-out" 
+        : "w-full max-w-2xl mx-auto space-y-4 transition-all duration-1000 ease-in-out";
+
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-4">
-            <div className="relative aspect-square md:aspect-[4/3] rounded-[40px] overflow-hidden bg-royal-blue/10 border border-white/20 shadow-2xl glass group">
+        <>
+        <div className={mainContainerClass}>
+            <div className={`relative aspect-square md:aspect-[4/3] overflow-hidden bg-royal-blue/10 border border-white/20 shadow-2xl glass group ${hasSessionEnded ? 'rounded-2xl shadow-xl' : 'rounded-[40px]'}`}>
 
                 <div className="absolute inset-0">
                     <AnimatePresence mode="wait">
@@ -503,7 +558,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                                 exit={{ opacity: 0, scale: 1.1 }}
                                 src="https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/glo-3-female-human.png?alt=media&token=0ab75fba-deeb-41c4-b62c-2635057b4a8f"
                                 alt="Glo"
-                                className="w-full h-full object-cover brightness-110"
+                                className="w-full h-full object-cover object-top brightness-110"
                             />
                         )}
                     </AnimatePresence>
@@ -723,6 +778,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
             </div>
 
             {/* Diagnostic Panel */}
+            {!hasSessionEnded && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
                 <div className="bg-gray-100/90 backdrop-blur-sm border-2 border-emerald-500/30 rounded-3xl p-6 shadow-lg space-y-5">
                     <div className="flex justify-between items-center mb-1">
@@ -789,6 +845,21 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                     </div>
                 </div>
             </div>
+            )}
         </div>
+
+            {hasSessionEnded && (
+                <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    transition={{ delay: 0.5, duration: 1 }} 
+                    className="fixed inset-0 z-[150] bg-[#f8fafc] overflow-y-auto w-full h-[100dvh]"
+                >
+                    <div className="min-h-screen pt-32 pb-20 px-4 md:px-0 relative z-10 w-full flex items-start justify-center">
+                        <PostGloClose firstName={context?.candidateName?.split(' ')[0] || 'there'} />
+                    </div>
+                </motion.div>
+            )}
+        </>
     );
 };

@@ -80,7 +80,7 @@ Listen carefully to the user's response. Acknowledge what they say professionall
 **5 Closing Comments**
 
 <instruction action="Closing the call">
-"Alright, {{first_name}}, I am on a strict timer so I need to wrap this up. I am sending my notes over to Glenn so he can include that drafted profile in your Suitability Study email. It was a pleasure speaking with you, and I wish you the best of luck. Goodbye."
+"Alright, {{first_name}}, I am on a strict timer so I need to wrap this up. I am sending my notes over to Glenn so he can include that drafted profile in your Suitability Study email. OK, {{first_name}} Check your screen for our special offer! BYE"
 </instruction>
 
 <instruction action="ONLY Respond to these if asked directly by candidate">

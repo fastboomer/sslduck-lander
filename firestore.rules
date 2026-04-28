@@ -2,13 +2,37 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─── Articles ───────────────────────────────────────────────
+    // Public read (blog content). No public writes.
     match /articles/{articleId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if false;
     }
+
+    // ─── Gap Reports ────────────────────────────────────────────
+    // The gap analysis tool writes reports without requiring login.
+    // Keep writes open; reads are unrestricted too for report retrieval.
     match /gap-reports/{reportId} {
       allow read: if true;
       allow write: if true;
     }
+
+    // ─── User Access ─────────────────────────────────────────────
+    // The core of the membership system.
+    // Users can ONLY read their OWN doc, and ONLY if:
+    //   • They are signed in
+    //   • The doc belongs to them (uid match)
+    //   • Their access is marked active
+    //   • Their expiration date is in the future
+    // No client-side writes allowed — only Firebase Admin SDK writes here.
+    match /user_access/{uid} {
+      allow read: if request.auth != null
+                  && request.auth.uid == uid
+                  && resource.data.is_active == true
+                  && resource.data.expiration_date > request.time;
+      allow write: if false;
+    }
+
   }
 }

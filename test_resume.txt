@@ -1,0 +1,9 @@
+John Doe
+123 Fake Street, Pittsburgh, PA 15212
+johndoe@example.com | (555) 123-4567
+
+EXPERIENCE
+Software Engineer
+Tech Corp, 2020 - Present
+- Designed scalable web applications
+- Led a team of 3 developers
