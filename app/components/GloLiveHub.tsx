@@ -48,7 +48,7 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
             idleTimeout = setTimeout(() => {
                 onLog('TTS Stream Idle, scheduling playback completion...');
                 scheduleEnd();
-            }, 2000); // Wait 2s without chunks to assume stream done
+            }, 1000); // Wait 1s without chunks to assume stream done
         };
 
         const cleanup = () => {
@@ -283,7 +283,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                 addLog,
                 cancelTTSRef
             );
-        }, 1000);
+        }, 150);
         return () => clearTimeout(timer);
     }, [context, status, isPreTalk, addLog, apiKey]);
 

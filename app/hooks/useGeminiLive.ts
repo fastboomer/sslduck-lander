@@ -302,12 +302,6 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                                     }
                                 }
                             },
-                            // Disable server-side VAD so Gemini never auto-interrupts Glo's monologue
-                            realtimeInputConfig: {
-                                automaticActivityDetection: {
-                                    disabled: true
-                                }
-                            },
                             systemInstruction: {
                                 parts: [{
                                     text: `${context?.gloPersona || 'You are Glo, a high-performing career strategist.'}
@@ -322,7 +316,7 @@ ${context?.gloFacts ? `### FACTUAL REFERENCE DATA\n${context.gloFacts}` : ''}
 
 To follow the script, map the following data to the remaining traits variables (like {{trait-1}} and {{rtraits_1}}): Extract the 3 most important employer requirements from the Evaluation Analysis, and the 3 best matching traits from the resume/analysis that match those requirements.
 
-STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the persona and script provided. Do NOT pause and wait for user acknowledgment between sections — deliver the complete presentation continuously.
+STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the persona and script provided.
 `
                                 }]
                             }
