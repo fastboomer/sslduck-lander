@@ -57,9 +57,9 @@ export const AudioAura: React.FC<AudioAuraProps> = ({ isActive, volume }) => {
                 canvas.width / 2, canvas.height / 2, 0,
                 canvas.width / 2, canvas.height / 2, (canvas.width / 2) * (0.4 + volume * 0.6)
             );
-            gradient1.addColorStop(0, 'rgba(46, 76, 255, 0.5)'); // Royal Blue
-            gradient1.addColorStop(0.5, 'rgba(147, 51, 234, 0.2)'); // Purple hint
-            gradient1.addColorStop(1, 'rgba(46, 76, 255, 0)');
+            gradient1.addColorStop(0, 'rgba(46, 76, 255, 0)');        // Transparent at center (Glo's face)
+            gradient1.addColorStop(0.55, 'rgba(147, 51, 234, 0.15)'); // Soft purple mid-ring
+            gradient1.addColorStop(1, 'rgba(46, 76, 255, 0.45)');     // Blue glow at perimeter
 
             ctx.fillStyle = gradient1;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
