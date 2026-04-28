@@ -120,7 +120,7 @@ Next prepare the following Resume checklist. Review the resume, and display the 
 
 Column 1 H3 label “Resume”   
 List the following items;   
-\*\*\* STREET ADDRESS  (Should NOT show street address)  
+\*\*\* City, State, Zip **ONLY Should NOT show street address 
 \*\*\* TELEPHONE  (Should show cellphone and area code)  
 \*\*\* EMAIL  (Use personal professional email address, not hotstuff@lovemail.com)  
 \*\*\* LINKEDIN  (Should show LinkedIn URL \- you can PASS  if the http or www are missing)  
