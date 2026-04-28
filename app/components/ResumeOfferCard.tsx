@@ -72,7 +72,7 @@ export const ResumeOfferCard: React.FC = () => {
                 throw new Error(errorMsg);
             }
 
-            let result;
+            let result: { reportId: string };
             try {
                 result = JSON.parse(responseText);
                 setProgress(100);
