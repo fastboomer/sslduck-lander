@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 console.log("[GAP_ROUTE] Module Loaded");
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // Claude Sonnet analysis ~15-40s + file extraction buffer
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
             const { text } = await generateText({
                 model: anthropic('claude-sonnet-4-5'),
                 prompt: finalPrompt,
-                maxOutputTokens: 8192,
+                maxOutputTokens: 4096, // Capped at 4096 — halves Claude generation time vs 8192
             });
             analysis = text;
             console.log(`[GAP_PROCESS] [${new Date().toISOString()}] GAP Analysis Execution Complete.`);
@@ -227,8 +227,9 @@ export async function POST(req: NextRequest) {
         }
         */
 
-        // 9. Return success now — user proceeds to audio page immediately
-        // Doc generation + email run as a non-blocking background task (fire-and-forget)
+        // 9. Return success — user proceeds to audio page immediately
+        // after() is Next.js 15+ post-response hook: Vercel keeps the function warm
+        // until the background promise resolves (unlike Promise.resolve().then which can be killed)
         const reportResponse = NextResponse.json({
             success: true,
             reportId: reportId,
@@ -236,7 +237,7 @@ export async function POST(req: NextRequest) {
             message: "Report processed and dispatched."
         });
 
-        Promise.resolve().then(async () => {
+        after(async () => {
             try {
                 console.log("[GAP_PROCESS] [BG] Generating Word document...");
                 const docBuffer = await createGapDoc(analysis, targetCompany);
@@ -260,11 +261,11 @@ export async function POST(req: NextRequest) {
                 await sendGapReport(targetEmail, candidateName, analysis, filename, bccParams);
                 console.log("[GAP_PROCESS] [BG] Email sent successfully.");
             } catch (bgErr: any) {
-                console.error("[GAP_PROCESS] [BG] Background doc/email task failed:", bgErr.message);
+                console.error("[GAP_PROCESS] [BG] Background doc/email failed:", bgErr.message);
             }
         });
 
-        console.log("[GAP_PROCESS] Returning success. Doc/email running in background.");
+        console.log("[GAP_PROCESS] Returning success. Doc/email running via after().");
         return reportResponse;
 
     } catch (error: any) {
