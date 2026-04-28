@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
             const { text } = await generateText({
                 model: anthropic('claude-sonnet-4-5'),
                 prompt: finalPrompt,
-                maxTokens: 8192,
+                maxOutputTokens: 8192,
             });
             analysis = text;
             console.log(`[GAP_PROCESS] [${new Date().toISOString()}] GAP Analysis Execution Complete.`);
