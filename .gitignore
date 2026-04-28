@@ -1,8 +1,13 @@
 .vercel
 .env*.local
 .next/
-node_modules/'nAI-BRIEFS/'nMember Control/*.json
+node_modules/
 node_modules
 
+# Session documentation — contains API keys, keep off GitHub
 AI-BRIEFS/
+
+# Firebase service account keys
 Member Control/*.json
+
+.vercel

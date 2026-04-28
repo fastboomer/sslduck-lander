@@ -5,7 +5,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 // The private key is stored in .env.local with literal \n characters — convert them to real newlines
 const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-if (!getApps().length) {
+if (!getApps().length && process.env.FIREBASE_ADMIN_PROJECT_ID) {
   initializeApp({
     credential: cert({
       projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,

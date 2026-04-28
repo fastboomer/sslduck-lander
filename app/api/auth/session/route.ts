@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
+
 /** POST /api/auth/session
  *  Exchanges a Firebase ID token for an httpOnly session cookie.
  *  Called by the login page after the user signs in client-side.
