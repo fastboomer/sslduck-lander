@@ -508,7 +508,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     const currentMicLevel = status === 'PREFLIGHT' ? preflightUserMicLevel : (isActive ? micPeak : 0);
 
     const mainContainerClass = hasSessionEnded 
-        ? "fixed top-20 md:top-28 left-4 md:left-6 w-16 h-16 md:w-20 md:h-20 z-[200] transition-all duration-1000 ease-in-out" 
+        ? "fixed top-20 md:top-28 left-4 md:left-6 w-14 h-14 md:w-[72px] md:h-[72px] z-[200] transition-all duration-1000 ease-in-out" 
         : "w-full max-w-2xl mx-auto space-y-4 transition-all duration-1000 ease-in-out";
 
     return (

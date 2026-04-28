@@ -80,7 +80,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
     const audioQueueRef = useRef<Float32Array[]>([]);
     const nextScheduleTimeRef = useRef<number>(0);
     const scheduledSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-    const jitterBufferThreshold = 6; // Increased from 3 to 6 to prevent static/crackling from network jitter
+    const jitterBufferThreshold = 3; // 3 chunks (~375ms buffer at 24kHz) balances jitter protection and startup latency
 
     const statusRef = useRef<string>('IDLE');
     const handshakeTimeoutRef = useRef<any>(null);
@@ -302,6 +302,12 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                                     }
                                 }
                             },
+                            // Disable server-side VAD so Gemini never auto-interrupts Glo's monologue
+                            realtimeInputConfig: {
+                                automaticActivityDetection: {
+                                    disabled: true
+                                }
+                            },
                             systemInstruction: {
                                 parts: [{
                                     text: `${context?.gloPersona || 'You are Glo, a high-performing career strategist.'}
@@ -312,11 +318,11 @@ ${context?.gloFacts ? `### FACTUAL REFERENCE DATA\n${context.gloFacts}` : ''}
 
 ### SESSION DATA
 - **Full Candidate Name**: ${context?.candidateName || 'the candidate'}
-- **Evaluation Analysis (Source for Traits)**: ${context?.analysis || 'Analysis pending.'}
+- **Evaluation Analysis (Source for Traits)**: ${(context?.analysis || 'Analysis pending.').slice(0, 3000)}
 
 To follow the script, map the following data to the remaining traits variables (like {{trait-1}} and {{rtraits_1}}): Extract the 3 most important employer requirements from the Evaluation Analysis, and the 3 best matching traits from the resume/analysis that match those requirements.
 
-STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the persona and script provided.
+STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the persona and script provided. Do NOT pause and wait for user acknowledgment between sections — deliver the complete presentation continuously.
 `
                                 }]
                             }
@@ -359,13 +365,13 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                 if (ws.readyState === WebSocket.OPEN) {
                                     ws.send(JSON.stringify({
                                         clientContent: {
-                                            turns: [{ role: 'user', parts: [{ text: "Hi Glo, I’m here for my career evaluation. Please greet me and share your first strategic insight." }] }],
+                                            turns: [{ role: 'user', parts: [{ text: "Please begin your complete presentation now." }] }],
                                             turnComplete: true
                                         }
                                     }));
-                                    log('Kickstart sent (Strategic).');
+                                    log('Kickstart sent (Full Presentation).');
                                 }
-                            }, 300);
+                            }, 100);
 
                             let sentChunks = 0;
                             let silenceStart = Date.now();
