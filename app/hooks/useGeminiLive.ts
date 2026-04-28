@@ -260,7 +260,8 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
             log('Pro Output Chain (Gain -> Analyser -> Dest) established.');
 
             updateStatus('CONNECTING_WS');
-            const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+            // gemini-2.0-flash-live-001 requires v1beta endpoint (v1alpha returns code 1008 not found)
+            const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
             // Connection Watchdog
             const connectionTimeout = setTimeout(() => {

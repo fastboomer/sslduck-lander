@@ -18,7 +18,8 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
     try {
         if (!apiKey) throw new Error("API Key missing");
         onLog(`Requesting Live TTS for voice: ${voiceName}...`);
-        const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+        // gemini-2.0-flash-live-001 requires v1beta (v1alpha rejects it with code 1008)
+        const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
         const ws = new WebSocket(liveUrl);
         let actx: AudioContext | null = null;
         let nextScheduleTime = 0;

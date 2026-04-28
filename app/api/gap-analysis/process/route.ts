@@ -227,54 +227,45 @@ export async function POST(req: NextRequest) {
         }
         */
 
-        // 9. Generate Word Document and Save to GAP-USERS
-        console.log("[GAP_PROCESS] Generating Word document...");
-        try {
-            const docBuffer = await createGapDoc(analysis, targetCompany);
-
-            // Generate Filename from candidateName
-            const safeName = candidateName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-            const timestamp = Date.now().toString().slice(-6);
-            const filename = `gap-${safeName || 'report'}-${timestamp}`;
-
-            const gapUsersDir = path.join(os.tmpdir(), 'GAP-USERS');
-
-            if (!fs.existsSync(gapUsersDir)) {
-                console.log("[GAP_PROCESS] Creating GAP-USERS directory...");
-                fs.mkdirSync(gapUsersDir, { recursive: true });
-            }
-
-            const filePath = path.join(gapUsersDir, `${filename}.docx`);
-
-            fs.writeFileSync(filePath, docBuffer);
-            console.log("[GAP_PROCESS] Saved Word report to:", filePath);
-
-            // 9.1 Save AI-ready Markdown version
-            const mdFilePath = path.join(os.tmpdir(), 'GAP-USERS', `${filename}.md`);
-            fs.writeFileSync(mdFilePath, analysis);
-            console.log("[GAP_PROCESS] Saved AI-ready Markdown to:", mdFilePath);
-
-            // 10. Email to User (with CC to Glenn)
-            console.log("[GAP_PROCESS] Emailing report...");
-            const targetEmail = (extractedEmail && extractedEmail.trim().includes('@')) ? extractedEmail.trim() : 'glenn@sslduck.net';
-            const bccEmail = 'glenn@sslduck.net';
-            
-            // Only BCC if the target email isn't already the admin email
-            const bccParams = targetEmail.toLowerCase() === bccEmail.toLowerCase() ? undefined : bccEmail;
-            
-            // Send analysis instead of docBuffer so mail.ts generates an HTML email body!
-            await sendGapReport(targetEmail, candidateName, analysis, filename, bccParams);
-        } catch (exportErr: any) {
-            console.error("[GAP_PROCESS] Export/Email failed:", exportErr);
-        }
-
-        console.log("[GAP_PROCESS] Entire process completed successfully.");
-        return NextResponse.json({
+        // 9. Return success now — user proceeds to audio page immediately
+        // Doc generation + email run as a non-blocking background task (fire-and-forget)
+        const reportResponse = NextResponse.json({
             success: true,
             reportId: reportId,
             candidateName,
             message: "Report processed and dispatched."
         });
+
+        Promise.resolve().then(async () => {
+            try {
+                console.log("[GAP_PROCESS] [BG] Generating Word document...");
+                const docBuffer = await createGapDoc(analysis, targetCompany);
+
+                const safeName = candidateName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+                const timestamp = Date.now().toString().slice(-6);
+                const filename = `gap-${safeName || 'report'}-${timestamp}`;
+
+                const gapUsersDir = path.join(os.tmpdir(), 'GAP-USERS');
+                if (!fs.existsSync(gapUsersDir)) fs.mkdirSync(gapUsersDir, { recursive: true });
+
+                fs.writeFileSync(path.join(gapUsersDir, `${filename}.docx`), docBuffer);
+                fs.writeFileSync(path.join(os.tmpdir(), 'GAP-USERS', `${filename}.md`), analysis);
+                console.log("[GAP_PROCESS] [BG] Word doc saved:", filename);
+
+                const targetEmail = (extractedEmail && extractedEmail.trim().includes('@')) ? extractedEmail.trim() : 'glenn@sslduck.net';
+                const bccEmail = 'glenn@sslduck.net';
+                const bccParams = targetEmail.toLowerCase() === bccEmail.toLowerCase() ? undefined : bccEmail;
+
+                console.log("[GAP_PROCESS] [BG] Emailing report to:", targetEmail);
+                await sendGapReport(targetEmail, candidateName, analysis, filename, bccParams);
+                console.log("[GAP_PROCESS] [BG] Email sent successfully.");
+            } catch (bgErr: any) {
+                console.error("[GAP_PROCESS] [BG] Background doc/email task failed:", bgErr.message);
+            }
+        });
+
+        console.log("[GAP_PROCESS] Returning success. Doc/email running in background.");
+        return reportResponse;
 
     } catch (error: any) {
         console.error(`[${new Date().toISOString()}] CRITICAL ERROR: ${error.message}\n${error.stack}\n`);
