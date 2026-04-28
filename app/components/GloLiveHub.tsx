@@ -18,8 +18,8 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
     try {
         if (!apiKey) throw new Error("API Key missing");
         onLog(`Requesting Live TTS for voice: ${voiceName}...`);
-        // gemini-2.0-flash-live-001 requires v1beta (v1alpha rejects it with code 1008)
-        const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+        // gemini-2.5-flash-native-audio-latest uses v1alpha for BidiGenerateContent
+        const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
         const ws = new WebSocket(liveUrl);
         let actx: AudioContext | null = null;
         let nextScheduleTime = 0;
@@ -65,7 +65,7 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
             onLog('TTS WS Open. Sending Setup...');
             ws.send(JSON.stringify({
                 setup: {
-                    model: 'models/gemini-2.0-flash-live-001', // Stable model pin — avoids audio quality regressions in 'latest'
+                    model: 'models/gemini-2.5-flash-native-audio-latest',
                     generationConfig: {
                         temperature: 0.1,
                         topP: 0.05,
