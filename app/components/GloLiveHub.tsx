@@ -508,13 +508,13 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     const currentMicLevel = status === 'PREFLIGHT' ? preflightUserMicLevel : (isActive ? micPeak : 0);
 
     const mainContainerClass = hasSessionEnded 
-        ? "fixed top-40 left-4 md:left-6 w-16 h-16 md:w-20 md:h-20 z-[200] transition-all duration-1000 ease-in-out" 
+        ? "fixed top-20 md:top-28 left-4 md:left-6 w-16 h-16 md:w-20 md:h-20 z-[200] transition-all duration-1000 ease-in-out" 
         : "w-full max-w-2xl mx-auto space-y-4 transition-all duration-1000 ease-in-out";
 
     return (
         <>
         <div className={mainContainerClass}>
-            <div className={`relative aspect-square md:aspect-[4/3] overflow-hidden bg-royal-blue/10 border border-white/20 shadow-2xl glass group ${hasSessionEnded ? 'rounded-2xl shadow-xl' : 'rounded-[40px]'}`}>
+            <div className={`relative aspect-square overflow-hidden bg-royal-blue/10 border border-white/20 shadow-2xl glass group ${hasSessionEnded ? 'rounded-2xl shadow-xl' : 'rounded-[40px]'}`}>
 
                 <div className="absolute inset-0">
                     <AnimatePresence mode="wait">
@@ -572,9 +572,11 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                             />
                         )}
                     </AnimatePresence>
-                    <AudioAura isActive={isActive || isPreTalk} volume={isPreTalk ? 0.3 : volume} />
+                    <AudioAura isActive={!hasSessionEnded && (isActive || isPreTalk)} volume={isPreTalk ? 0.3 : volume} />
 
 
+                    {/* Name bar hidden in mini-mode — shows only Glo's face */}
+                    {!hasSessionEnded && (
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-6 z-10">
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
@@ -604,10 +606,11 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                             )}
                         </div>
                     </div>
+                    )}
                 </div>
 
                 <AnimatePresence>
-                    {(status === 'IDLE' && !isPreTalk) && (
+                    {(status === 'IDLE' && !isPreTalk && !hasSessionEnded) && (
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 backdrop-blur-[2px] gap-4 z-20"
@@ -865,7 +868,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                     transition={{ delay: 0.5, duration: 1 }} 
                     className="fixed inset-0 z-[150] bg-[#f8fafc] overflow-y-auto w-full h-[100dvh]"
                 >
-                    <div className="min-h-screen pt-32 pb-20 px-4 md:px-0 relative z-10 w-full flex items-start justify-center">
+                    <div className="min-h-screen pt-40 pb-20 px-4 md:px-0 relative z-10 w-full flex items-start justify-center">
                         <PostGloClose firstName={context?.candidateName?.split(' ')[0] || 'there'} />
                     </div>
                 </motion.div>
