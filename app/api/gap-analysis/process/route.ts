@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 console.log("[GAP_ROUTE] Module Loaded");
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // Max duration for Vercel Hobby tier is usually 60s (Pro is up to 300s)
+export const maxDuration = 120; // Raised from 60s — gemini-2.0-flash needs ~10-20s but allow buffer for file extraction + saves
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
@@ -150,13 +150,13 @@ export async function POST(req: NextRequest) {
         // Safely enforce tags at the very bottom since they may have failed to replace if malformed
         const finalPrompt = finalPromptBase + `\n\n<job-description>\n${combinedReqText}\n</job-description>\n\n<requirements>\n${combinedReqText}\n</requirements>\n\n<resume>\n${combinedResumeText}\n</resume>`;
 
-        // 6. Execute AI (Pro with Flash fallback)
-        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Executing GAP Analysis with Claude...`);
+        // 6. Execute AI (gemini-2.0-flash-001 — fast, reliable, <20s avg)
+        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Executing GAP Analysis with Gemini Flash...`);
         let analysis = '';
 
         try {
             const { text } = await generateText({
-                model: googleAI('gemini-2.5-pro'),
+                model: googleAI('gemini-2.0-flash-001'),
                 prompt: finalPrompt,
             });
             analysis = text;

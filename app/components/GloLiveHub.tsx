@@ -64,7 +64,7 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
             onLog('TTS WS Open. Sending Setup...');
             ws.send(JSON.stringify({
                 setup: {
-                    model: 'models/gemini-2.5-flash-native-audio-latest', // Required for 2.0/2.5 Native Audio
+                    model: 'models/gemini-2.0-flash-live-001', // Stable model pin — avoids audio quality regressions in 'latest'
                     generationConfig: {
                         temperature: 0.1,
                         topP: 0.05,
@@ -220,7 +220,16 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     }, []);
 
     const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY || '').trim();
-    const { isActive, startSession: startGemini, stopSession, reset: resetGeminiError, volume, micPeak, error: geminiError, geminiStatus } = useGeminiLive(apiKey || '', context, addLog);
+    const { isActive, startSession: startGemini, stopSession, reset: resetGeminiError, volume, micPeak, error: geminiError, geminiStatus } = useGeminiLive(
+        apiKey || '',
+        context,
+        addLog,
+        // onNaturalEnd: Gemini closed the session cleanly (code 1000/1001) — treat as normal end
+        () => {
+            addLog('Natural session end received from hook. Triggering offer page.');
+            setTimeout(() => setHasSessionEnded(true), 1500);
+        }
+    );
 
     // Fetch context on mount
     useEffect(() => {
@@ -498,7 +507,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
     const currentMicLevel = status === 'PREFLIGHT' ? preflightUserMicLevel : (isActive ? micPeak : 0);
 
     const mainContainerClass = hasSessionEnded 
-        ? "fixed top-32 left-4 md:left-6 w-16 h-16 md:w-20 md:h-20 z-[200] transition-all duration-1000 ease-in-out" 
+        ? "fixed top-40 left-4 md:left-6 w-16 h-16 md:w-20 md:h-20 z-[200] transition-all duration-1000 ease-in-out" 
         : "w-full max-w-2xl mx-auto space-y-4 transition-all duration-1000 ease-in-out";
 
     return (
@@ -558,7 +567,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                                 exit={{ opacity: 0, scale: 1.1 }}
                                 src="https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/glo-3-female-human.png?alt=media&token=0ab75fba-deeb-41c4-b62c-2635057b4a8f"
                                 alt="Glo"
-                                className="w-full h-full object-cover object-top brightness-110"
+                                className={`w-full h-full object-cover brightness-110 ${hasSessionEnded ? 'object-[center_18%]' : 'object-top'}`}
                             />
                         )}
                     </AnimatePresence>

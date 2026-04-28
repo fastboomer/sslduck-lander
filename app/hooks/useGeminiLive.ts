@@ -56,7 +56,7 @@ function base64ToFloat32(base64: string) {
     return float32;
 }
 
-export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string) => void) => {
+export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string) => void, onNaturalEnd?: () => void) => {
     const [isActive, setIsActive] = useState(false);
     const [volume, setVolume] = useState(0);
     const [micPeak, setMicPeak] = useState(0);
@@ -290,7 +290,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
 
                     ws.send(JSON.stringify({
                         setup: {
-                            model: 'models/gemini-2.5-flash-native-audio-latest',
+                            model: 'models/gemini-2.0-flash-live-001',
                             generationConfig: {
                                 responseModalities: ['AUDIO'],
                                 speechConfig: {
@@ -516,10 +516,19 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                     clearTimeout(connectionTimeout);
                     if (wsRef.current === ws) {
                         log(`WS Closed: ${e.code} ${e.reason || ''}`);
-                        if (!isActive && statusRef.current !== 'ERROR') {
+                        // Code 1000 = Normal closure, 1001 = Going away (server-side session limit reached)
+                        // Treat these as natural session ends, not errors
+                        const isNaturalClose = e.code === 1000 || e.code === 1001;
+                        if (isNaturalClose) {
+                            log('Session ended naturally (server-side close). Transitioning to offer page.');
+                            stopSession(false);
+                            if (onNaturalEnd) onNaturalEnd();
+                        } else if (statusRef.current !== 'ERROR') {
                             setError(`Session Terminated (Code ${e.code}): ${e.reason || 'Handshake rejected by endpoint'}`);
+                            stopSession(true);
+                        } else {
+                            stopSession(true);
                         }
-                        stopSession(true);
                     }
                 };
             };
