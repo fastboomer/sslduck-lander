@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse, after } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 console.log("[GAP_ROUTE] Module Loaded");
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // Claude Sonnet analysis ~15-40s + file extraction buffer
@@ -156,15 +156,39 @@ export async function POST(req: NextRequest) {
         let analysis = '';
 
         try {
-            const { text } = await generateText({
-                model: anthropic('claude-sonnet-4-5'),
-                prompt: finalPrompt,
-                maxOutputTokens: 4096, // Capped at 4096 — halves Claude generation time vs 8192
-            });
-            analysis = text;
-            console.log(`[GAP_PROCESS] [${new Date().toISOString()}] GAP Analysis Execution Complete.`);
+            let usedFallback = false;
+
+            try {
+                console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Trying Claude Sonnet (60s timeout)...`);
+                const { text } = await generateText({
+                    model: anthropic('claude-sonnet-4-5'),
+                    prompt: finalPrompt,
+                    maxOutputTokens: 4096,
+                    maxRetries: 0,
+                    abortSignal: AbortSignal.timeout(60000), // Hard cap: abort if Claude hangs past 60s
+                });
+                analysis = text;
+                console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Claude Sonnet completed successfully.`);
+            } catch (claudeErr: any) {
+                console.warn(`[GAP_PROCESS] Claude Sonnet failed (${claudeErr.name}: ${claudeErr.message}). Falling back to Gemini Flash...`);
+                usedFallback = true;
+            }
+
+            // Gemini 2.5 Flash fallback — ~10-20s, already configured, no rate limit issues
+            if (usedFallback || !analysis.trim()) {
+                console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Running Gemini 2.5 Flash fallback...`);
+                const { text: flashText } = await generateText({
+                    model: googleAI('gemini-2.5-flash'),
+                    prompt: finalPrompt,
+                    maxOutputTokens: 4096,
+                    maxRetries: 0,
+                });
+                analysis = flashText;
+                console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Gemini Flash fallback completed.`);
+            }
+
         } catch (error: any) {
-            console.error(`[GAP_PROCESS] [${new Date().toISOString()}] AI processing failed:`, error);
+            console.error(`[GAP_PROCESS] [${new Date().toISOString()}] All AI providers failed:`, error);
             const detailedError = error.cause ? error.cause.message || error.cause : JSON.stringify(error, Object.getOwnPropertyNames(error));
             throw new Error(`AI Analysis failed: ${detailedError}`);
         }
@@ -237,7 +261,10 @@ export async function POST(req: NextRequest) {
             message: "Report processed and dispatched."
         });
 
-        after(async () => {
+        // after() caused 504 on Vercel by holding the response open past maxDuration.
+        // Promise.resolve().then() schedules work as a microtask AFTER return fires,
+        // so the HTTP response is sent immediately while doc/email run in the background.
+        Promise.resolve().then(async () => {
             try {
                 console.log("[GAP_PROCESS] [BG] Generating Word document...");
                 const docBuffer = await createGapDoc(analysis, targetCompany);
