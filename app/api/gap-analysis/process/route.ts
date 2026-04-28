@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
 
         try {
             const { text } = await generateText({
-                model: anthropic('claude-3-5-haiku-20241022'), // Haiku: ~4x faster than Sonnet, sufficient for structured gap analysis
+                model: anthropic('claude-sonnet-4-5'),
                 prompt: finalPrompt,
                 maxOutputTokens: 8192,
             });
