@@ -29,15 +29,15 @@ function OfferPageContent() {
                 if (res.ok) {
                     const data = await res.json();
                     const name = data.candidateName || '';
-                    setFirstName(name.split(' ')[0] || 'there');
+                    setFirstName(name.split(' ')[0] || '');
                     setEmail(data.email || '');
                 } else {
                     // Still show the page — just without a personalized name
-                    setFirstName('there');
+                    setFirstName('');
                 }
             } catch (err: any) {
                 console.error('Failed to fetch report context:', err);
-                setFirstName('there');
+                setFirstName('');
             } finally {
                 setIsLoading(false);
             }
@@ -66,7 +66,7 @@ function OfferPageContent() {
                 <p className="text-royal-blue/60 text-center max-w-md">
                     We couldn&apos;t load your report details. You can still explore our packages below.
                 </p>
-                <PostGloClose firstName="there" />
+                <PostGloClose firstName="" />
             </div>
         );
     }
@@ -74,7 +74,7 @@ function OfferPageContent() {
     return (
         <main className="min-h-screen bg-background">
             <Header />
-            <div className="pt-24 pb-20 px-4">
+            <div className="pt-36 pb-20 px-4">
                 {/* Branded top label */}
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}

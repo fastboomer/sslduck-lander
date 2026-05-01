@@ -126,7 +126,7 @@ export const PostGloClose: React.FC<PostGloCloseProps> = ({ firstName, email }) 
         >
             <div className="text-center mb-10 sm:mb-16">
                 <motion.h2 variants={itemVariants} className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
-                    Hi{firstName ? <> <span className="text-red-600 capitalize">{firstName}</span></> : ''}! Select your offer and let&apos;s get started!
+                    Hi{firstName ? <> {firstName}</> : ''}! Select your offer and let&apos;s get started!
                 </motion.h2>
             </div>
 
