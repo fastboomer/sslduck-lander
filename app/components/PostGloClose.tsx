@@ -85,13 +85,24 @@ export const PostGloClose: React.FC<PostGloCloseProps> = ({ firstName, email }) 
             priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ACCELERATION || 'price_789_placeholder',
             imageSrc: '/images/mitch-headshot.jpg',
             imageAlt: 'Mitch',
-            description: 'The ultimate package. A highly aggressive executive-level portfolio.',
-            features: [
-                'Everything in The Advantage',
-                'LinkedIn profile optimization',
-                'Post-interview thank you templates',
-                'Direct phone consultation'
-            ],
+            description: '',
+            features: [] as string[],
+            richContent: (
+                <div className="mt-3 space-y-4">
+                    {[
+                        'The ultimate package. A highly aggressive executive-level, \u201cdone for you\u201d portfolio.',
+                        'One direct phone consultation with highly experienced professional resume writer, plus text and email interaction while resume is drafted.',
+                        'Everything in \u201cThe Advantage\u201d including 12 mos. Unlimited Self-Serve.',
+                        'LinkedIn Profile Optimization.',
+                        'Post-interview Thank You templates.'
+                    ].map((item, i) => (
+                        <div key={i} className="flex items-start text-sm">
+                            <CheckCircle2 size={18} className="text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                            <span className="text-gray-700 font-medium">{item}</span>
+                        </div>
+                    ))}
+                </div>
+            ),
             color: 'from-amber-500 to-orange-600',
             buttonColor: 'bg-emerald-500 hover:bg-emerald-600',
             buttonText: 'Get The Acceleration',
