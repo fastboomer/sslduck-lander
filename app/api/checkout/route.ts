@@ -27,10 +27,6 @@ export async function POST(req: NextRequest) {
       // After payment, send to the welcome + upsell page
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/gap-analysis/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/`,
-      // Disable Stripe Link (the green "Pay with Link" button)
-      payment_method_options: {
-        link: { display_preference: { preference: 'off' } },
-      },
     });
 
     return NextResponse.json({ url: session.url });
