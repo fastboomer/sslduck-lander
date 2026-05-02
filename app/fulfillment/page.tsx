@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase-client';
+import { extractTextFromFile } from '@/lib/extract-text';
+import { buildPrompt, estimatePromptStats } from '@/lib/prompt-template';
 
 interface AccessInfo {
   plan_type: string;
@@ -20,10 +22,15 @@ function FulfillmentDashboard() {
   const [access, setAccess] = useState<AccessInfo | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
-  // Resume tool state (wired up in next phase)
+  // Resume tool state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeText, setResumeText] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
   const [jobDescription, setJobDescription] = useState('');
   const [additionalComments, setAdditionalComments] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -52,7 +59,41 @@ function FulfillmentDashboard() {
 
   const planLabel = access?.plan_type === '12_month' ? '12-Month' : '6-Month';
 
-  const isReady = resumeFile && jobDescription.trim().length > 20;
+  const handleResumeUpload = async (file: File) => {
+    setResumeFile(file);
+    setResumeText('');
+    setExtractError(null);
+    setIsExtracting(true);
+    try {
+      const text = await extractTextFromFile(file);
+      if (!text || text.length < 50) throw new Error('Could not extract readable text. Try a different file format.');
+      setResumeText(text);
+    } catch (err: unknown) {
+      setExtractError(err instanceof Error ? err.message : 'Failed to read file.');
+      setResumeFile(null);
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const handleBuildAndCopy = async () => {
+    if (!resumeText || !jobDescription.trim()) return;
+    setCopyError(null);
+    const prompt = buildPrompt({ resumeText, jobDescription, additionalComments });
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 4000);
+    } catch {
+      setCopyError('Clipboard access denied. Please copy manually from the preview below.');
+    }
+  };
+
+  const promptStats = resumeText && jobDescription
+    ? estimatePromptStats(buildPrompt({ resumeText, jobDescription, additionalComments }))
+    : null;
+
+  const isReady = !!resumeText && jobDescription.trim().length > 20;
 
   return (
     <>
@@ -377,13 +418,10 @@ function FulfillmentDashboard() {
           </div>
 
           {/* ── Resume Tool ──────────────────────────────────────── */}
-          <p className="section-label">
-            Resume Optimizer
-            <span className="coming-soon-tag">⚙ Design in Progress</span>
-          </p>
+          <p className="section-label">Resume Optimizer</p>
           <div className="tool-card">
             <h2>Build Your Optimization Prompt</h2>
-            <p>Upload your resume and target job description — we&apos;ll do the rest.</p>
+            <p>Upload your resume and paste the job description — we&apos;ll assemble your expert prompt instantly.</p>
 
             {/* Input 1: Resume Upload */}
             <div className="input-group">
@@ -396,13 +434,21 @@ function FulfillmentDashboard() {
                   type="file"
                   accept=".pdf,.doc,.docx,.txt"
                   id="resume-upload"
-                  onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleResumeUpload(f); }}
                 />
-                <div className="upload-icon">📎</div>
-                <div className="upload-title">Click to upload your resume</div>
-                <div className="upload-sub">PDF, Word (.docx), or plain text — max 5MB</div>
-                {resumeFile && (
-                  <div className="upload-file-name">✓ {resumeFile.name}</div>
+                <div className="upload-icon">
+                  {isExtracting ? '⏳' : resumeText ? '✅' : '📎'}
+                </div>
+                <div className="upload-title">
+                  {isExtracting ? 'Reading your resume...' : resumeText ? resumeFile?.name : 'Click to upload your resume'}
+                </div>
+                <div className="upload-sub">
+                  {isExtracting ? 'Extracting text in your browser — nothing leaves your device'
+                    : resumeText ? `${resumeText.length.toLocaleString()} characters extracted ✓`
+                    : 'PDF, Word (.docx), or plain text — max 5MB'}
+                </div>
+                {extractError && (
+                  <div style={{ marginTop: 10, color: '#f87171', fontSize: 12 }}>⚠ {extractError}</div>
                 )}
               </div>
             </div>
@@ -416,11 +462,16 @@ function FulfillmentDashboard() {
               <textarea
                 id="job-description-input"
                 className="dash-textarea"
-                placeholder="Paste the full job description here — include the responsibilities, qualifications, and any keywords from the posting. The more complete, the better your results."
+                placeholder="Paste the full job description here — include responsibilities, qualifications, and keywords from the posting. The more complete, the better your results."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 rows={7}
               />
+              {jobDescription.trim().length > 0 && (
+                <div style={{ fontSize: 11, color: '#475569', marginTop: 4, textAlign: 'right' }}>
+                  {jobDescription.trim().length.toLocaleString()} characters
+                </div>
+              )}
             </div>
 
             {/* Input 3: Additional Comments */}
@@ -432,29 +483,53 @@ function FulfillmentDashboard() {
               <textarea
                 id="additional-comments-input"
                 className="dash-textarea"
-                placeholder="Anything else you'd like the AI to consider — career goals, gaps to address, achievements to highlight, tone preferences, etc."
+                placeholder="Anything else for the AI to consider — career goals, gaps to address, achievements to highlight, tone preferences, etc."
                 value={additionalComments}
                 onChange={(e) => setAdditionalComments(e.target.value)}
                 rows={4}
               />
             </div>
 
+            {/* Prompt stats */}
+            {promptStats && (
+              <div style={{
+                background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(167,139,250,0.15)',
+                borderRadius: 10, padding: '10px 16px', marginBottom: 20,
+                display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 12, color: '#94a3b8',
+              }}>
+                <span>📝 <strong style={{ color: '#a78bfa' }}>{promptStats.words.toLocaleString()}</strong> words</span>
+                <span>🔤 <strong style={{ color: '#a78bfa' }}>{promptStats.chars.toLocaleString()}</strong> characters</span>
+                <span>🧠 ~<strong style={{ color: '#a78bfa' }}>{promptStats.approxTokens.toLocaleString()}</strong> tokens (fits all major LLMs)</span>
+              </div>
+            )}
+
             {/* CTA */}
             <button
               id="build-prompt-btn"
               className="build-btn"
-              disabled={!isReady}
-              onClick={() => alert('Prompt assembly coming soon — design in progress!')}
+              disabled={!isReady || isExtracting}
+              onClick={handleBuildAndCopy}
+              style={isCopied ? { background: 'linear-gradient(135deg, #059669, #10b981)' } : undefined}
             >
-              <span>📋</span>
-              Build &amp; Copy My Optimization Prompt
+              <span>{isCopied ? '✅' : '📋'}</span>
+              {isCopied ? 'Copied to Clipboard!' : 'Build & Copy My Optimization Prompt'}
             </button>
+
+            {copyError && (
+              <p style={{ color: '#f87171', fontSize: 12, marginTop: 8, textAlign: 'center' }}>{copyError}</p>
+            )}
+
             <p className="build-btn-note">
-              {isReady
-                ? '✓ Ready — click to assemble and copy your prompt to clipboard'
-                : 'Upload your resume and paste a job description to continue'}
+              {isCopied
+                ? 'Now paste it into ChatGPT, Claude, Gemini, or any AI of your choice.'
+                : isReady
+                ? '✓ Ready — click to assemble your expert prompt and copy it to clipboard'
+                : !resumeText
+                ? 'Upload your resume to continue'
+                : 'Paste a job description (at least a few sentences) to continue'}
             </p>
           </div>
+
 
           {/* ── Access Status ────────────────────────────────────── */}
           {access && (
