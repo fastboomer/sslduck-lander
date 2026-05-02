@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase-client';
@@ -11,9 +12,13 @@ interface AccessInfo {
   purchase_date: { toDate: () => Date };
 }
 
-export default function FulfillmentDashboard() {
+function FulfillmentDashboard() {
+  const searchParams = useSearchParams();
+  const isNewMember = searchParams.get('new_member') === '1';
+
   const [user, setUser] = useState<User | null>(null);
   const [access, setAccess] = useState<AccessInfo | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -24,6 +29,9 @@ export default function FulfillmentDashboard() {
     });
     return () => unsub();
   }, []);
+
+  // Derive first name from Firebase display name or email
+  const firstName = user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'Member';
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -117,6 +125,34 @@ export default function FulfillmentDashboard() {
       `}</style>
 
       <div className="dash-page">
+        {/* ── New Member: Password Setup Banner ─────────────────── */}
+        {isNewMember && !bannerDismissed && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.06))',
+            borderBottom: '1px solid rgba(16,185,129,0.25)',
+            padding: '14px 24px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: '16px', flexWrap: 'wrap',
+            fontSize: '14px', color: '#6ee7b7',
+          }}>
+            <span>
+              ✉️ <strong>Check your email</strong> — we&apos;ve sent a link to set your password for future logins.
+              You&apos;re already signed in and ready to go!
+            </span>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              id="dismiss-banner-btn"
+              style={{
+                background: 'none', border: '1px solid rgba(16,185,129,0.3)',
+                color: '#6ee7b7', padding: '4px 12px', borderRadius: '6px',
+                cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap',
+              }}
+            >
+              Got it ✕
+            </button>
+          </div>
+        )}
+
         <nav className="dash-nav">
           <span className="dash-logo">SSLDUCK</span>
           <div className="dash-user">
@@ -127,8 +163,8 @@ export default function FulfillmentDashboard() {
 
         <main className="dash-body">
           <div className="dash-welcome">
-            <h1>Welcome back <span>Member</span> 👋</h1>
-            <p>Your premium content is ready and waiting.</p>
+            <h1>Welcome{isNewMember ? '' : ' back'}, <span>{firstName}</span> 👋</h1>
+            <p>{isNewMember ? 'Your purchase is confirmed. Your content is ready below.' : 'Your premium content is ready and waiting.'}</p>
           </div>
 
           {/* Access Status Card */}
@@ -180,5 +216,18 @@ export default function FulfillmentDashboard() {
         </main>
       </div>
     </>
+  );
+}
+
+export default function FulfillmentPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', background: '#080712', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid rgba(167,139,250,0.2)', borderTopColor: '#a78bfa', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    }>
+      <FulfillmentDashboard />
+    </Suspense>
   );
 }

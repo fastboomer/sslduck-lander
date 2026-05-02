@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         first_name: firstName || '',
       },
       // After payment, send to the welcome + upsell page
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/welcome-and-offer?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/gap-analysis/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/`,
     });
 

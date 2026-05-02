@@ -1,0 +1,54 @@
+[33mcommit 68c9a476b649d06c7fa8c152824b089ff16fc19e[m
+Author: Fast Boomer <fastboomer@gmail.com>
+Date:   Mon Apr 27 19:21:50 2026 -0700
+
+    feat: add secure fulfillment bridge
+
+ .gitignore                                         |    6 [32m+[m[31m-[m
+ .../glo-audio-prompts/glo-audio-discussion.md      |    2 [32m+[m[31m-[m
+ .../report-prompts/gap-analysis-instructions.md    |  152 [31m--[m
+ .../1-SUITABILITY-STUDY-PROMPT-SSLDUCKNET.md       |  212 [32m+[m[31m--[m
+ IMAGES/glo-hand-to-cheek-blue-sitting.PNG          |  Bin [31m0[m -> [32m691126[m bytes
+ IMAGES/glo-hand-to-cheek-blue-sitting2.PNG         |  Bin [31m0[m -> [32m691126[m bytes
+ ...STUDIO-PROMPTS-Screenshot 2026-04-20 222906.png |  Bin [31m0[m -> [32m222491[m bytes
+ SCREENSHOTS/1-Screenshot 2026-04-20 234028.png     |  Bin [31m0[m -> [32m334826[m bytes
+ SCREENSHOTS/10-Screenshot 2026-04-26 203357.png    |  Bin [31m0[m -> [32m84931[m bytes
+ SCREENSHOTS/11-Screenshot 2026-04-26 203808.png    |  Bin [31m0[m -> [32m132358[m bytes
+ SCREENSHOTS/12-Screenshot 2026-04-26 204859.png    |  Bin [31m0[m -> [32m115349[m bytes
+ SCREENSHOTS/13-Screenshot 2026-04-27 091235.png    |  Bin [31m0[m -> [32m132667[m bytes
+ SCREENSHOTS/14-Screenshot 2026-04-27 092520.png    |  Bin [31m0[m -> [32m107767[m bytes
+ SCREENSHOTS/15-Screenshot 2026-04-27 093824.png    |  Bin [31m0[m -> [32m162994[m bytes
+ SCREENSHOTS/16-Screenshot 2026-04-27 183552.png    |  Bin [31m0[m -> [32m113737[m bytes
+ SCREENSHOTS/17-Screenshot 2026-04-27 184641.png    |  Bin [31m0[m -> [32m142184[m bytes
+ ...-SSLDUCKLANDER-Screenshot 2026-04-20 232048.png |  Bin [31m0[m -> [32m59310[m bytes
+ ...hook1-endpoint-Screenshot 2026-04-26 182436.png |  Bin [31m0[m -> [32m115860[m bytes
+ ...hook2-endpoint-Screenshot 2026-04-26 182436.png |  Bin [31m0[m -> [32m99903[m bytes
+ ...bhook-endpoint-Screenshot 2026-04-26 182436.png |  Bin [31m0[m -> [32m91518[m bytes
+ ...iron-variables-Screenshot 2026-04-26 192633.png |  Bin [31m0[m -> [32m80911[m bytes
+ SCREENSHOTS/7-Screenshot 2026-04-26 193531.png     |  Bin [31m0[m -> [32m131909[m bytes
+ SCREENSHOTS/8-Screenshot 2026-04-26 195019.png     |  Bin [31m0[m -> [32m121760[m bytes
+ SCREENSHOTS/9-Screenshot 2026-04-26 195643.png     |  Bin [31m0[m -> [32m97519[m bytes
+ app/api/auth/session/route.ts                      |   52 [32m+[m
+ app/api/checkout/route.ts                          |   37 [32m+[m
+ app/api/gap-analysis/process/route.ts              |   77 [32m+[m[31m-[m
+ app/api/webhooks/stripe/route.ts                   |  167 [32m+++[m
+ app/components/GapIntake.tsx                       |  282 [32m+[m[31m---[m
+ app/components/GloLiveHub.tsx                      |   83 [32m+[m[31m-[m
+ app/components/PostGloClose.tsx                    |  180 [32m+++[m
+ app/components/ResumeOfferCard.tsx                 |   48 [32m+[m[31m-[m
+ app/components/WithAuth.tsx                        |  139 [32m++[m
+ app/fulfillment/layout.tsx                         |   10 [32m+[m
+ app/fulfillment/page.tsx                           |  184 [32m+++[m
+ app/gap-analysis/success/page.tsx                  |    6 [32m+[m[31m-[m
+ app/hooks/useGeminiLive.ts                         |   55 [32m+[m[31m-[m
+ app/layout.tsx                                     |    2 [32m+[m[31m-[m
+ app/lib/mail.ts                                    |    2 [32m+[m[31m-[m
+ app/login/page.tsx                                 |  413 [32m++++++[m
+ app/test-payment/page.tsx                          |   93 [32m++[m
+ app/welcome-and-offer/page.tsx                     |  235 [32m+++[m
+ firestore.rules                                    |   26 [32m+[m[31m-[m
+ fulfillment.config.ts                              |   33 [32m+[m
+ lib/firebase-admin.ts                              |   19 [32m+[m
+ lib/firebase-client.ts                             |   18 [32m+[m
+ middleware.ts                                      |   30 [32m+[m
+ package-lock.json                                  | 1548 [32m++++++++
