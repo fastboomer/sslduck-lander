@@ -20,6 +20,11 @@ function FulfillmentDashboard() {
   const [access, setAccess] = useState<AccessInfo | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
+  // Resume tool state (wired up in next phase)
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [jobDescription, setJobDescription] = useState('');
+  const [additionalComments, setAdditionalComments] = useState('');
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) return;
@@ -30,7 +35,6 @@ function FulfillmentDashboard() {
     return () => unsub();
   }, []);
 
-  // Derive first name from Firebase display name or email
   const firstName = user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || 'Member';
 
   const handleLogout = async () => {
@@ -46,28 +50,37 @@ function FulfillmentDashboard() {
     ? Math.max(0, Math.ceil((access.expiration_date.toDate().getTime() - Date.now()) / 86400000))
     : null;
 
+  const planLabel = access?.plan_type === '12_month' ? '12-Month' : '6-Month';
+
+  const isReady = resumeFile && jobDescription.trim().length > 20;
+
   return (
     <>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
         .dash-page {
           min-height: 100vh;
-          background: radial-gradient(ellipse at 20% 10%, rgba(124,58,237,0.15) 0%, transparent 50%),
-                      #080712;
+          background:
+            radial-gradient(ellipse at 20% 10%, rgba(124,58,237,0.15) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 90%, rgba(59,130,246,0.08) 0%, transparent 50%),
+            #080712;
           font-family: 'Inter', system-ui, sans-serif;
           color: #e2e8f0;
         }
+
+        /* ── Nav ───────────────────────────────────────── */
         .dash-nav {
           display: flex; align-items: center; justify-content: space-between;
           padding: 16px 32px;
           border-bottom: 1px solid rgba(167,139,250,0.1);
           backdrop-filter: blur(10px);
-          position: sticky; top: 0; z-index: 10;
-          background: rgba(8,7,18,0.8);
+          position: sticky; top: 0; z-index: 20;
+          background: rgba(8,7,18,0.85);
         }
-        .dash-logo { font-size: 18px; font-weight: 800; color: #a78bfa; letter-spacing: -0.5px; }
+        .dash-logo { font-size: 18px; font-weight: 900; color: #a78bfa; letter-spacing: -0.5px; }
         .dash-user { display: flex; align-items: center; gap: 12px; }
-        .dash-email { font-size: 13px; color: #64748b; }
+        .dash-email { font-size: 13px; color: #475569; }
         .logout-btn {
           background: rgba(255,255,255,0.05); border: 1px solid rgba(167,139,250,0.2);
           color: #94a3b8; font-size: 13px; padding: 6px 14px; border-radius: 6px;
@@ -75,42 +88,172 @@ function FulfillmentDashboard() {
         }
         .logout-btn:hover { background: rgba(255,255,255,0.09); color: #e2e8f0; }
 
-        .dash-body { max-width: 900px; margin: 0 auto; padding: 48px 24px; }
-        .dash-welcome { margin-bottom: 40px; }
-        .dash-welcome h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
-        .dash-welcome h1 span { color: #a78bfa; }
-        .dash-welcome p { color: #64748b; font-size: 15px; }
+        /* ── Body ──────────────────────────────────────── */
+        .dash-body { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
 
-        .status-card {
-          background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(167,139,250,0.06));
-          border: 1px solid rgba(167,139,250,0.2);
-          border-radius: 16px; padding: 28px;
-          display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 24px; margin-bottom: 40px;
+        /* ── Welcome ───────────────────────────────────── */
+        .dash-welcome { margin-bottom: 8px; }
+        .dash-welcome h1 { font-size: 30px; font-weight: 800; line-height: 1.2; }
+        .dash-welcome h1 span { color: #a78bfa; }
+        .dash-welcome p { color: #64748b; font-size: 15px; margin-top: 8px; }
+
+        /* ── Access badge ──────────────────────────────── */
+        .access-badge {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: rgba(124,58,237,0.1); border: 1px solid rgba(167,139,250,0.2);
+          border-radius: 999px; padding: 5px 14px; font-size: 12px;
+          color: #a78bfa; font-weight: 600; letter-spacing: 0.3px;
+          margin-bottom: 36px;
         }
-        .status-item label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; }
-        .status-item p { font-size: 18px; font-weight: 700; color: #e2e8f0; margin-top: 4px; }
+        .access-dot { width: 7px; height: 7px; background: #a78bfa; border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+        /* ── Section label ─────────────────────────────── */
+        .section-label {
+          font-size: 11px; font-weight: 700; letter-spacing: 2px;
+          text-transform: uppercase; color: #475569; margin-bottom: 16px;
+        }
+
+        /* ── Intro card ────────────────────────────────── */
+        .intro-card {
+          background: rgba(255,255,255,0.02);
+          border: 1px solid rgba(167,139,250,0.12);
+          border-radius: 20px; padding: 32px 36px; margin-bottom: 40px;
+        }
+        .intro-card h2 {
+          font-size: 20px; font-weight: 700; color: #f1f5f9; margin-bottom: 14px;
+        }
+        .intro-card p {
+          font-size: 14px; color: #94a3b8; line-height: 1.75; margin-bottom: 10px;
+        }
+        .intro-card p:last-child { margin-bottom: 0; }
+
+        /* ── How it works steps ────────────────────────── */
+        .steps-row {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 16px; margin: 28px 0 0;
+        }
+        .step-box {
+          background: rgba(124,58,237,0.06); border: 1px solid rgba(167,139,250,0.15);
+          border-radius: 14px; padding: 20px 18px; text-align: center;
+        }
+        .step-num {
+          width: 32px; height: 32px; border-radius: 50%;
+          background: linear-gradient(135deg, #7c3aed, #a78bfa);
+          display: inline-flex; align-items: center; justify-content: center;
+          font-size: 13px; font-weight: 800; color: white;
+          margin-bottom: 12px;
+        }
+        .step-title { font-size: 13px; font-weight: 700; color: #e2e8f0; margin-bottom: 6px; }
+        .step-desc { font-size: 12px; color: #64748b; line-height: 1.5; }
+
+        /* ── Tool card ─────────────────────────────────── */
+        .tool-card {
+          background: rgba(255,255,255,0.02);
+          border: 1px solid rgba(167,139,250,0.15);
+          border-radius: 20px; padding: 36px; margin-bottom: 40px;
+        }
+        .tool-card h2 {
+          font-size: 18px; font-weight: 700; color: #f1f5f9; margin-bottom: 6px;
+        }
+        .tool-card > p {
+          font-size: 13px; color: #64748b; margin-bottom: 32px;
+        }
+
+        /* ── Input groups ──────────────────────────────── */
+        .input-group { margin-bottom: 28px; }
+        .input-label {
+          display: flex; align-items: center; gap: 8px;
+          font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 10px;
+        }
+        .input-label .badge {
+          font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+          text-transform: uppercase; padding: 2px 7px; border-radius: 4px;
+        }
+        .badge-required { background: rgba(124,58,237,0.2); color: #a78bfa; }
+        .badge-optional { background: rgba(100,116,139,0.15); color: #64748b; }
+
+        /* Upload drop zone */
+        .upload-zone {
+          border: 2px dashed rgba(167,139,250,0.25);
+          border-radius: 12px; padding: 28px 20px;
+          text-align: center; cursor: pointer;
+          transition: all 0.2s; position: relative;
+          background: rgba(124,58,237,0.03);
+        }
+        .upload-zone:hover { border-color: rgba(167,139,250,0.5); background: rgba(124,58,237,0.07); }
+        .upload-zone input[type="file"] {
+          position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .upload-icon { font-size: 28px; margin-bottom: 10px; }
+        .upload-title { font-size: 14px; font-weight: 600; color: #cbd5e1; margin-bottom: 4px; }
+        .upload-sub { font-size: 12px; color: #475569; }
+        .upload-file-name {
+          margin-top: 10px; font-size: 12px; color: #a78bfa; font-weight: 600;
+          background: rgba(124,58,237,0.12); padding: 4px 12px; border-radius: 6px;
+          display: inline-block;
+        }
+
+        /* Textarea */
+        .dash-textarea {
+          width: 100%; padding: 14px 16px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(167,139,250,0.18);
+          border-radius: 12px;
+          color: #e2e8f0; font-size: 14px; font-family: inherit;
+          resize: vertical; min-height: 130px; line-height: 1.6;
+          outline: none; transition: border-color 0.2s;
+        }
+        .dash-textarea::placeholder { color: #334155; }
+        .dash-textarea:focus { border-color: rgba(167,139,250,0.45); }
+
+        /* ── CTA button ────────────────────────────────── */
+        .build-btn {
+          width: 100%; padding: 16px;
+          background: linear-gradient(135deg, #7c3aed, #a78bfa);
+          border: none; border-radius: 12px;
+          color: white; font-size: 16px; font-weight: 800;
+          cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          margin-top: 8px;
+        }
+        .build-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+        .build-btn:disabled {
+          opacity: 0.3; cursor: not-allowed; transform: none;
+          background: rgba(100,116,139,0.3);
+        }
+        .build-btn-note {
+          text-align: center; font-size: 12px; color: #475569; margin-top: 10px;
+        }
+
+        /* ── Coming soon overlay ───────────────────────── */
+        .coming-soon-tag {
+          display: inline-flex; align-items: center; gap: 6px;
+          font-size: 11px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 1px; color: #f59e0b;
+          background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25);
+          border-radius: 6px; padding: 3px 10px; margin-left: 10px;
+        }
+
+        /* ── Access status ─────────────────────────────── */
+        .status-card {
+          background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(167,139,250,0.04));
+          border: 1px solid rgba(167,139,250,0.15);
+          border-radius: 16px; padding: 24px 28px;
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 20px; margin-bottom: 32px;
+        }
+        .status-item label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #475569; }
+        .status-item p { font-size: 16px; font-weight: 700; color: #e2e8f0; margin-top: 4px; }
         .status-item p.days { color: #a78bfa; }
 
-        .content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-        .content-card {
-          background: rgba(255,255,255,0.03); border: 1px solid rgba(167,139,250,0.12);
-          border-radius: 14px; padding: 24px;
-          text-decoration: none; display: block;
-          transition: all 0.2s; cursor: pointer;
-        }
-        .content-card:hover { background: rgba(167,139,250,0.06); border-color: rgba(167,139,250,0.3); transform: translateY(-2px); }
-        .card-icon { font-size: 28px; margin-bottom: 12px; }
-        .card-title { font-size: 16px; font-weight: 600; color: #e2e8f0; margin-bottom: 6px; }
-        .card-desc { font-size: 13px; color: #64748b; line-height: 1.5; }
-
+        /* ── Renewal strip ─────────────────────────────── */
         .renew-strip {
-          margin-top: 40px;
           background: linear-gradient(135deg, #1e0a3c, #0f172a);
-          border: 1px solid rgba(167,139,250,0.25);
-          border-radius: 14px; padding: 24px 28px;
-          display: flex; align-items: center; justify-content: space-between; gap: 20px;
-          flex-wrap: wrap;
+          border: 1px solid rgba(167,139,250,0.2);
+          border-radius: 14px; padding: 20px 24px;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 16px; flex-wrap: wrap; margin-top: 32px;
         }
         .renew-strip p { font-size: 14px; color: #94a3b8; }
         .renew-strip strong { color: #a78bfa; }
@@ -122,22 +265,29 @@ function FulfillmentDashboard() {
           transition: opacity 0.2s;
         }
         .renew-cta:hover { opacity: 0.88; }
+
+        @media (max-width: 600px) {
+          .dash-nav { padding: 14px 16px; }
+          .dash-body { padding: 32px 16px 60px; }
+          .tool-card { padding: 24px 20px; }
+          .intro-card { padding: 24px 20px; }
+        }
       `}</style>
 
       <div className="dash-page">
-        {/* ── New Member: Password Setup Banner ─────────────────── */}
+
+        {/* ── New Member Banner ───────────────────────────────── */}
         {isNewMember && !bannerDismissed && (
           <div style={{
-            background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.06))',
-            borderBottom: '1px solid rgba(16,185,129,0.25)',
-            padding: '14px 24px',
+            background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05))',
+            borderBottom: '1px solid rgba(16,185,129,0.2)',
+            padding: '13px 24px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            gap: '16px', flexWrap: 'wrap',
-            fontSize: '14px', color: '#6ee7b7',
+            gap: '16px', flexWrap: 'wrap', fontSize: '14px', color: '#6ee7b7',
           }}>
             <span>
-              ✉️ <strong>Check your email</strong> — we&apos;ve sent a link to set your password for future logins.
-              You&apos;re already signed in and ready to go!
+              ✉️ <strong>One more step:</strong> Check your email for a link to set your password — so you can log back in anytime.
+              You&apos;re already signed in and ready to start!
             </span>
             <button
               onClick={() => setBannerDismissed(true)}
@@ -153,6 +303,7 @@ function FulfillmentDashboard() {
           </div>
         )}
 
+        {/* ── Nav ──────────────────────────────────────────────── */}
         <nav className="dash-nav">
           <span className="dash-logo">SSLDUCK</span>
           <div className="dash-user">
@@ -162,57 +313,183 @@ function FulfillmentDashboard() {
         </nav>
 
         <main className="dash-body">
+
+          {/* ── Welcome ─────────────────────────────────────────── */}
           <div className="dash-welcome">
-            <h1>Welcome{isNewMember ? '' : ' back'}, <span>{firstName}</span> 👋</h1>
-            <p>{isNewMember ? 'Your purchase is confirmed. Your content is ready below.' : 'Your premium content is ready and waiting.'}</p>
+            <h1>
+              {isNewMember ? 'Welcome, ' : 'Welcome back, '}
+              <span>{firstName}</span> 👋
+            </h1>
+            <p>
+              {isNewMember
+                ? 'Your purchase is confirmed — your resume optimizer is ready below.'
+                : 'Your resume optimizer is ready. Pick up where you left off.'}
+            </p>
           </div>
 
-          {/* Access Status Card */}
+          {/* Access badge */}
           {access && (
-            <div className="status-card">
-              <div className="status-item">
-                <label>Plan</label>
-                <p>{access.plan_type === '12_month' ? '12-Month' : '6-Month'} Access</p>
-              </div>
-              <div className="status-item">
-                <label>Member Since</label>
-                <p>{formatDate(access.purchase_date.toDate())}</p>
-              </div>
-              <div className="status-item">
-                <label>Expires</label>
-                <p>{formatDate(access.expiration_date.toDate())}</p>
-              </div>
-              <div className="status-item">
-                <label>Days Remaining</label>
-                <p className="days">{daysLeft} days</p>
-              </div>
+            <div className="access-badge">
+              <div className="access-dot" />
+              {planLabel} Member &mdash; {daysLeft} days remaining
             </div>
           )}
 
-          {/* Content Links — add new cards here as you build more pages */}
-          <div className="content-grid">
-            <a href="/fulfillment/course-materials" className="content-card" id="dash-link-course">
-              <div className="card-icon">📚</div>
-              <div className="card-title">Course Materials</div>
-              <div className="card-desc">Access all your downloadable resources and training content.</div>
-            </a>
-            <a href="/fulfillment/bonus-videos" className="content-card" id="dash-link-videos">
-              <div className="card-icon">🎬</div>
-              <div className="card-title">Bonus Videos</div>
-              <div className="card-desc">Exclusive video walkthroughs and deep-dive sessions.</div>
-            </a>
-            {/* ↓ Add new content links here as you create new pages */}
+          {/* ── Introduction ────────────────────────────────────── */}
+          <p className="section-label">How This Works</p>
+          <div className="intro-card">
+            <h2>Your AI-Powered Resume Optimizer</h2>
+            <p>
+              This tool gives you the most powerful resume optimization workflow available — without expensive monthly
+              subscriptions or sharing your personal documents with anyone. Everything happens on <strong style={{ color: '#e2e8f0' }}>your device</strong>, in your browser.
+            </p>
+            <p>
+              You upload your resume and the job description you&apos;re targeting. The program assembles a precision-engineered
+              prompt — built on years of professional resume writing expertise — and copies it to your clipboard. You then paste
+              it into the AI of your choice (ChatGPT, Claude, Gemini, etc.) and get an elite-quality gap analysis in seconds.
+            </p>
+            <p style={{ color: '#64748b', fontSize: '13px' }}>
+              💡 <em>Your documents never leave your computer. Nothing is uploaded to our servers. Use it as many times as you like.</em>
+            </p>
+
+            <div className="steps-row">
+              <div className="step-box">
+                <div className="step-num">1</div>
+                <div className="step-title">Upload Your Resume</div>
+                <div className="step-desc">PDF or Word doc — we extract the text right in your browser</div>
+              </div>
+              <div className="step-box">
+                <div className="step-num">2</div>
+                <div className="step-title">Paste the Job Description</div>
+                <div className="step-desc">Copy it directly from the job posting — full text works best</div>
+              </div>
+              <div className="step-box">
+                <div className="step-num">3</div>
+                <div className="step-title">Build &amp; Copy Prompt</div>
+                <div className="step-desc">One click assembles everything and copies it to your clipboard</div>
+              </div>
+              <div className="step-box">
+                <div className="step-num">4</div>
+                <div className="step-title">Paste Into Any AI</div>
+                <div className="step-desc">ChatGPT, Claude, Gemini — your choice, your account, your privacy</div>
+              </div>
+            </div>
           </div>
 
-          {/* Renewal Strip */}
-          {daysLeft !== null && daysLeft <= 60 && (
-            <div className="renew-strip">
-              <p>⚡ <strong>{daysLeft} days</strong> left on your membership — lock in the current rate before it rises.</p>
-              <a href="/welcome-and-offer?renew=true" className="renew-cta" id="dash-renew-btn">
-                Extend My Access →
-              </a>
+          {/* ── Resume Tool ──────────────────────────────────────── */}
+          <p className="section-label">
+            Resume Optimizer
+            <span className="coming-soon-tag">⚙ Design in Progress</span>
+          </p>
+          <div className="tool-card">
+            <h2>Build Your Optimization Prompt</h2>
+            <p>Upload your resume and target job description — we&apos;ll do the rest.</p>
+
+            {/* Input 1: Resume Upload */}
+            <div className="input-group">
+              <div className="input-label">
+                <span>📄 Your Resume</span>
+                <span className="badge badge-required">Required</span>
+              </div>
+              <div className="upload-zone">
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  id="resume-upload"
+                  onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                />
+                <div className="upload-icon">📎</div>
+                <div className="upload-title">Click to upload your resume</div>
+                <div className="upload-sub">PDF, Word (.docx), or plain text — max 5MB</div>
+                {resumeFile && (
+                  <div className="upload-file-name">✓ {resumeFile.name}</div>
+                )}
+              </div>
             </div>
+
+            {/* Input 2: Job Description */}
+            <div className="input-group">
+              <div className="input-label">
+                <span>🎯 Target Job Description</span>
+                <span className="badge badge-required">Required</span>
+              </div>
+              <textarea
+                id="job-description-input"
+                className="dash-textarea"
+                placeholder="Paste the full job description here — include the responsibilities, qualifications, and any keywords from the posting. The more complete, the better your results."
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                rows={7}
+              />
+            </div>
+
+            {/* Input 3: Additional Comments */}
+            <div className="input-group">
+              <div className="input-label">
+                <span>💬 Additional Notes</span>
+                <span className="badge badge-optional">Optional</span>
+              </div>
+              <textarea
+                id="additional-comments-input"
+                className="dash-textarea"
+                placeholder="Anything else you'd like the AI to consider — career goals, gaps to address, achievements to highlight, tone preferences, etc."
+                value={additionalComments}
+                onChange={(e) => setAdditionalComments(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            {/* CTA */}
+            <button
+              id="build-prompt-btn"
+              className="build-btn"
+              disabled={!isReady}
+              onClick={() => alert('Prompt assembly coming soon — design in progress!')}
+            >
+              <span>📋</span>
+              Build &amp; Copy My Optimization Prompt
+            </button>
+            <p className="build-btn-note">
+              {isReady
+                ? '✓ Ready — click to assemble and copy your prompt to clipboard'
+                : 'Upload your resume and paste a job description to continue'}
+            </p>
+          </div>
+
+          {/* ── Access Status ────────────────────────────────────── */}
+          {access && (
+            <>
+              <p className="section-label">Your Membership</p>
+              <div className="status-card">
+                <div className="status-item">
+                  <label>Plan</label>
+                  <p>{planLabel} Access</p>
+                </div>
+                <div className="status-item">
+                  <label>Member Since</label>
+                  <p style={{ fontSize: '14px' }}>{formatDate(access.purchase_date.toDate())}</p>
+                </div>
+                <div className="status-item">
+                  <label>Expires</label>
+                  <p style={{ fontSize: '14px' }}>{formatDate(access.expiration_date.toDate())}</p>
+                </div>
+                <div className="status-item">
+                  <label>Days Remaining</label>
+                  <p className="days">{daysLeft} days</p>
+                </div>
+              </div>
+
+              {daysLeft !== null && daysLeft <= 60 && (
+                <div className="renew-strip">
+                  <p>⚡ <strong>{daysLeft} days</strong> left — lock in your rate before it increases.</p>
+                  <a href="/gap-analysis/offer?renew=true" className="renew-cta" id="dash-renew-btn">
+                    Extend My Access →
+                  </a>
+                </div>
+              )}
+            </>
           )}
+
         </main>
       </div>
     </>
