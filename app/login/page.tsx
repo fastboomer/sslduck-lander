@@ -257,8 +257,8 @@ function friendlyError(code: string): string {
     'auth/cancelled-popup-request':      '', // silent
     'auth/account-exists-with-different-credential': 'An account already exists with this email. Try signing in with Google instead.',
   };
-  // Show the raw code in fallback so we can always diagnose
-  return map[code] ?? (code ? `Auth error: ${code}` : 'Something went wrong. Please try again.');
+  // Fallback for any unrecognised Firebase error code
+  return map[code] ?? 'Something went wrong. Please try again.';
 }
 
 export default function LoginPage() {
