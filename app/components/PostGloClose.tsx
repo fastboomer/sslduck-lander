@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion, Variants } from 'framer-motion';
 import { Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
@@ -13,8 +13,22 @@ interface PostGloCloseProps {
 export const PostGloClose: React.FC<PostGloCloseProps> = ({ firstName, email }) => {
     const [loadingId, setLoadingId] = useState<string | null>(null);
 
+    // Reset loading state when user navigates back (browser bfcache restore)
+    useEffect(() => {
+        const handlePageShow = (e: PageTransitionEvent) => {
+            // persisted = true means the page was restored from the back/forward cache
+            if (e.persisted) setLoadingId(null);
+        };
+        window.addEventListener('pageshow', handlePageShow);
+        return () => window.removeEventListener('pageshow', handlePageShow);
+    }, []);
+
     const handleCheckout = async (priceId: string) => {
         setLoadingId(priceId);
+
+        // Safety timeout — reset after 12s in case redirect never fires
+        const timeout = setTimeout(() => setLoadingId(null), 12000);
+
         try {
             const res = await fetch('/api/checkout', {
                 method: 'POST',
@@ -24,12 +38,15 @@ export const PostGloClose: React.FC<PostGloCloseProps> = ({ firstName, email }) 
             const data = await res.json();
             if (data.url) {
                 window.location.href = data.url;
+                // Don't clear timeout here — we WANT the spinner until redirect completes
             } else {
+                clearTimeout(timeout);
                 console.error("No checkout URL returned", data.error);
                 alert("Sorry, checkout is temporarily unavailable. Please try again later.");
                 setLoadingId(null);
             }
         } catch (err) {
+            clearTimeout(timeout);
             console.error("Checkout error", err);
             alert("Something went wrong navigating to checkout. Please try again.");
             setLoadingId(null);
