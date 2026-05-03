@@ -1,52 +1,54 @@
 import { Resend } from 'resend';
-import { marked } from 'marked';
 
+/**
+ * Sends the Gap Analysis / Suitability Study as a Word document attachment.
+ * The email body is minimal — the full report is in the .docx file.
+ *
+ * @param to          Recipient email address(es)
+ * @param candidateName  Candidate's full name (for subject line)
+ * @param docBuffer   Word document as a Buffer (from createGapDoc)
+ * @param filename    Base filename without extension (e.g. "gap-john-smith-123456")
+ * @param bcc         Optional BCC address(es)
+ */
 export async function sendGapReport(
-    to: string | string[], 
-    candidateName: string, 
-    content: string | Buffer, 
+    to: string | string[],
+    candidateName: string,
+    docBuffer: Buffer,
     filename: string,
     bcc?: string | string[]
 ) {
     try {
-        const apiKey = process.env.RESEND_API_KEY || "";
+        const apiKey = process.env.RESEND_API_KEY || '';
         if (!apiKey) {
             console.error('[MAIL] Missing RESEND_API_KEY');
             return { success: false, error: 'Email configuration missing' };
         }
         const resend = new Resend(apiKey);
-        console.log(`[MAIL] Sending Suitability Study for ${candidateName} to ${to}...`);
+        const firstName = candidateName.split(' ')[0] || candidateName;
+        console.log(`[MAIL] Sending Suitability Study Word doc for ${candidateName} to ${to}...`);
 
-        const isBuffer = Buffer.isBuffer(content);
-
-        // Open wrapper div — no greeting, the cover letter already opens with "Dear [name]"
-        let htmlBody = `<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px; line-height: 1.7; color: #1a1a1a; max-width: 860px; margin: 0 auto; padding: 20px;">`;
-        
-        if (!isBuffer) {
-            // Strip any XML marker tags the LLM outputs literally (e.g. <cover>, </cover>)
-            const cleanedContent = (content as string).replace(/<\/?cover>/gi, '').trim();
-            const reportHtml = await marked.parse(cleanedContent, { breaks: true });
-            htmlBody += reportHtml;
-        } else {
-            htmlBody += `<p>Please find the attached formatted report.</p>`;
-        }
-
-        htmlBody += `<br><hr style="margin: 20px 0;"/><p style="font-size:14px;">Best regards,<br><b>The SSLDUCK Team</b></p></div>`;
+        const htmlBody = `
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px; line-height: 1.8; color: #1a1a1a; max-width: 680px; margin: 0 auto; padding: 32px 24px;">
+  <p>Hi ${firstName},</p>
+  <p>Your <strong>Suitability Study</strong> is ready. Please open the attached Word document for your complete report — it includes your Gap Analysis, ATS keyword review, achievement rewrites, positioning strategy, and cover letter guidance.</p>
+  <p>The document is fully editable so you can copy sections directly into your resume or cover letter.</p>
+  <p style="margin-top: 32px;">Best regards,<br><strong>The SSLDUCK Team</strong></p>
+  <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;" />
+  <p style="font-size: 12px; color: #6b7280;">Questions? Reply to this email or visit <a href="https://sslduck.net" style="color: #2563eb;">sslduck.net</a>.</p>
+</div>`;
 
         const { data, error } = await resend.emails.send({
             from: 'SSLDUCK Reports <reports@sslduck.net>',
             to: Array.isArray(to) ? to : [to],
             ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
-            subject: `Suitability Study: ${candidateName.split(' ')[0]}`,
+            subject: `Your Suitability Study — ${candidateName}`,
             html: htmlBody,
-            ...(isBuffer ? {
-                attachments: [
-                    {
-                        filename: `${filename}.docx`,
-                        content: content,
-                    },
-                ]
-            } : {})
+            attachments: [
+                {
+                    filename: `${filename}.docx`,
+                    content: docBuffer,
+                },
+            ],
         });
 
         if (error) {

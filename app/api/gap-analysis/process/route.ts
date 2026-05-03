@@ -285,7 +285,7 @@ export async function POST(req: NextRequest) {
                 const bccParams = targetEmail.toLowerCase() === bccEmail.toLowerCase() ? undefined : bccEmail;
 
                 console.log("[GAP_PROCESS] [BG] Emailing report to:", targetEmail);
-                await sendGapReport(targetEmail, candidateName, analysis, filename, bccParams);
+                await sendGapReport(targetEmail, candidateName, docBuffer, filename, bccParams);
                 console.log("[GAP_PROCESS] [BG] Email sent successfully.");
             } catch (bgErr: any) {
                 console.error("[GAP_PROCESS] [BG] Background doc/email failed:", bgErr.message);
