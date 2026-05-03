@@ -251,12 +251,14 @@ function friendlyError(code: string): string {
     'auth/user-disabled':                'This account has been disabled. Please contact support.',
     'auth/email-already-in-use':         'An account with this email already exists.',
     'auth/weak-password':                'Password must be at least 6 characters.',
+    'auth/operation-not-allowed':        'Email/password sign-in is not enabled. Please contact support.',
     'auth/popup-closed-by-user':         '', // silent — user intentionally closed
     'auth/popup-blocked':                'Popup was blocked. Please allow popups for this site and try again.',
     'auth/cancelled-popup-request':      '', // silent
     'auth/account-exists-with-different-credential': 'An account already exists with this email. Try signing in with Google instead.',
   };
-  return map[code] ?? 'Something went wrong. Please try again.';
+  // Show the raw code in fallback so we can always diagnose
+  return map[code] ?? (code ? `Auth error: ${code}` : 'Something went wrong. Please try again.');
 }
 
 export default function LoginPage() {
