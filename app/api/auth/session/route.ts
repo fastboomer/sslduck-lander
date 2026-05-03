@@ -34,8 +34,19 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (err: any) {
-    console.error('Session creation error:', err.message);
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    console.error('[SESSION] Creation failed:', {
+      message: err.message,
+      code: err.code,
+      name: err.name,
+      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID || 'MISSING',
+      hasKey: !!process.env.FIREBASE_ADMIN_PRIVATE_KEY,
+      hasEmail: !!process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+    });
+    return NextResponse.json({ 
+      error: 'Session failed', 
+      detail: err.message,
+      code: err.code || err.name 
+    }, { status: 401 });
   }
 }
 

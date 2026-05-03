@@ -36,7 +36,14 @@ function LoginForm() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken }),
     });
-    if (!res.ok) throw new Error('Failed to create session');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      // Throw with a special code so friendlyError can surface the real message
+      const err: any = new Error(body.detail || 'Session creation failed');
+      err.code = 'session/failed';
+      err.sessionDetail = body.detail || body.error || 'Unknown server error';
+      throw err;
+    }
   };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
@@ -49,7 +56,7 @@ function LoginForm() {
       await createSession(idToken);
       router.replace(redirect);
     } catch (err: any) {
-      setError(friendlyError(err.code));
+      setError(err.sessionDetail ? `Server error: ${err.sessionDetail}` : friendlyError(err.code));
     } finally {
       setLoading(false);
     }
@@ -64,8 +71,8 @@ function LoginForm() {
       await createSession(idToken);
       router.replace(redirect);
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(friendlyError(err.code));
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        setError(err.sessionDetail ? `Server error: ${err.sessionDetail}` : friendlyError(err.code));
       }
     } finally {
       setLoading(false);
