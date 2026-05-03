@@ -232,14 +232,24 @@ function LoginForm() {
 
 function friendlyError(code: string): string {
   const map: Record<string, string> = {
-    'auth/wrong-password': 'Incorrect password. Try again or reset it below.',
-    'auth/user-not-found': 'No account found with that email.',
-    'auth/invalid-email': 'Please enter a valid email address.',
-    'auth/too-many-requests': 'Too many attempts. Please wait a few minutes and try again.',
-    'auth/invalid-credential': 'Email or password is incorrect.',
-    'auth/network-request-failed': 'Network error. Check your connection and try again.',
+    // Modern Firebase SDK v10+ error codes
+    'auth/invalid-login-credentials':    'Email or password is incorrect.',
+    'auth/invalid-credential':           'Email or password is incorrect.',
+    // Legacy error codes (still used in some flows)
+    'auth/wrong-password':               'Incorrect password. Try again or reset it below.',
+    'auth/user-not-found':               'No account found with that email.',
+    'auth/invalid-email':                'Please enter a valid email address.',
+    'auth/too-many-requests':            'Too many attempts. Please wait a few minutes and try again.',
+    'auth/network-request-failed':       'Network error. Check your connection and try again.',
+    'auth/user-disabled':                'This account has been disabled. Please contact support.',
+    'auth/email-already-in-use':         'An account with this email already exists.',
+    'auth/weak-password':                'Password must be at least 6 characters.',
+    'auth/popup-closed-by-user':         '', // silent — user intentionally closed
+    'auth/popup-blocked':                'Popup was blocked. Please allow popups for this site and try again.',
+    'auth/cancelled-popup-request':      '', // silent
+    'auth/account-exists-with-different-credential': 'An account already exists with this email. Try signing in with Google instead.',
   };
-  return map[code] || 'Something went wrong. Please try again.';
+  return map[code] ?? 'Something went wrong. Please try again.';
 }
 
 export default function LoginPage() {
