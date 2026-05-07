@@ -416,14 +416,29 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally.
                                                 }]
                                             }
                                         }));
-                                    } else if (hasSpokenThisTurn && (msSinceLastLoudSound >= 800 || isEchoGuardActive)) {
-                                        log("User paused or echo guard engaged. Audio gate closed — server VAD will detect turn end.");
-                                        hasSpokenThisTurn = false;
-                                        // NOTE: Do NOT send clientContent/turnComplete here.
-                                        // In realtimeInput (native audio) mode, mixing clientContent
-                                        // with the audio stream causes a 1007 invalid argument error.
-                                        // Simply stopping audio transmission is sufficient — the Gemini 2.5
-                                        // server-side VAD detects the silence and handles turn completion.
+                                    } else {
+                                        if (hasSpokenThisTurn && (msSinceLastLoudSound >= 800 || isEchoGuardActive)) {
+                                            log("User paused or echo guard engaged. Audio gate closed — sending silence for server VAD.");
+                                            hasSpokenThisTurn = false;
+                                        }
+                                        // CRITICAL: send silence frames when not speaking (and echo guard is off).
+                                        // Gemini's server-side VAD needs a continuous PCM stream to detect the
+                                        // speech→silence boundary. Sending nothing causes the server to wait
+                                        // indefinitely for more audio — this was the 2-minute silent hang bug.
+                                        // We do NOT send during echo guard (Glo is playing, server is in model turn).
+                                        if (!isEchoGuardActive) {
+                                            const silenceData = new Float32Array(rawData.length); // zeroed = silence
+                                            const resampledSilence = resample(silenceData, nativeRate, 16000);
+                                            const { base64: silenceBase64 } = floatTo16BitPCM(resampledSilence);
+                                            ws.send(JSON.stringify({
+                                                realtimeInput: {
+                                                    mediaChunks: [{
+                                                        mimeType: 'audio/pcm;rate=16000',
+                                                        data: silenceBase64
+                                                    }]
+                                                }
+                                            }));
+                                        }
                                     }
 
                                     sentChunks++;
