@@ -3,21 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, MessageSquare, ArrowRight, Play, Sparkles } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
 import { Suspense } from 'react';
 import { GloLiveHub } from '../../components/GloLiveHub';
 import Header from '../../components/Header';
 import { Footer } from '../../components/Footer';
-import { getDoc } from 'firebase/firestore';
 
 function GapSuccessContent() {
     const searchParams = useSearchParams();
     const reportId = searchParams.get('reportId');
     const [candidateName, setCandidateName] = useState('Candidate');
     const [isLoading, setIsLoading] = useState(true);
-    const [hasOptedIn, setHasOptedIn] = useState(false);
-    const [userName, setUserName] = useState('');
-    const [userConsent, setUserConsent] = useState(false);
+    // Full context passed to GloLiveHub so it skips its own duplicate fetch
+    const [gloContext, setGloContext] = useState<any>(null);
 
     useEffect(() => {
         if (!reportId) return;
@@ -27,6 +25,7 @@ function GapSuccessContent() {
                 if (res.ok) {
                     const data = await res.json();
                     setCandidateName(data.candidateName || 'Candidate');
+                    setGloContext(data); // Pass full context to GloLiveHub
                 }
             } catch (err) {
                 console.error("Error fetching report context:", err);
@@ -37,11 +36,7 @@ function GapSuccessContent() {
         fetchReport();
     }, [reportId]);
 
-    useEffect(() => {
-        if (candidateName && candidateName !== 'Candidate') {
-            setUserName(candidateName.split(' ')[0]);
-        }
-    }, [candidateName]);
+
 
     const firstName = candidateName.split(' ')[0];
 
@@ -76,11 +71,11 @@ function GapSuccessContent() {
                                     <div className="absolute top-0 left-0 w-1.5 h-full bg-royal-blue/20" />
                                     <div className="space-y-6 text-royal-blue/80 leading-relaxed font-sans text-sm">
                                         <div className="space-y-1">
-                                            <p className="font-bold text-royal-blue uppercase tracking-widest text-[10px] opacity-60">Memo: From Glenn; To: {userName || firstName}</p>
+                                            <p className="font-bold text-royal-blue uppercase tracking-widest text-[10px] opacity-60">Memo: From Glenn; To: {firstName}</p>
                                             <div className="h-px w-full bg-royal-blue/10" />
                                         </div>
 
-                                        <p>Hi <span className="font-bold text-royal-blue">{userName || firstName}</span>, we have received your resume and target job. The full GAP analysis is a product of both AI and my personal review.</p>
+                                        <p>Hi <span className="font-bold text-royal-blue">{firstName}</span>, we have received your resume and target job. The full GAP analysis is a product of both AI and my personal review.</p>
 
                                         <p>On average you should hear from me in 24-48 hours as I limit the number of free offers in any given week. However, it's possible for you to access very valuable <span className="font-bold text-royal-blue underline italic">instant information</span> right now!</p>
 
@@ -95,7 +90,7 @@ function GapSuccessContent() {
 
                             <div className="w-full md:w-[450px] shrink-0">
                                 {reportId && (
-                                    <GloLiveHub reportId={reportId} />
+                                    <GloLiveHub reportId={reportId} initialContext={gloContext} />
                                 )}
                             </div>
                         </div>

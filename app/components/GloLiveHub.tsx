@@ -8,6 +8,7 @@ import { PostGloClose } from './PostGloClose';
 
 interface GloLiveHubProps {
     reportId: string;
+    initialContext?: any; // Pre-fetched context from parent — skips duplicate Firestore call
 }
 
 type SessionStatus = 'IDLE' | 'PREFLIGHT' | 'CONNECTING' | 'ACTIVE' | 'ERROR';
@@ -164,9 +165,10 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
 };
 
 
-export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
+export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext }) => {
     const [status, setStatus] = useState<SessionStatus>('IDLE');
-    const [context, setContext] = useState<any>(null);
+    // Use pre-fetched context from parent if available; otherwise fetch ourselves
+    const [context, setContext] = useState<any>(initialContext || null);
     const [localError, setLocalError] = useState<string | null>(null);
     const [debugLogs, setDebugLogs] = useState<string[]>([]);
     const [preflightUserMicLevel, setPreflightUserMicLevel] = useState(0);
@@ -231,8 +233,12 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         }
     );
 
-    // Fetch context on mount
+    // Fetch context on mount — skipped if parent already provided initialContext
     useEffect(() => {
+        if (context) {
+            addLog('Context provided by parent — skipping duplicate fetch.');
+            return;
+        }
         const fetchContext = async () => {
             try {
                 addLog(`Fetching context for ${reportId}...`);
@@ -479,7 +485,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
         };
     }, [stopMicResources]);
 
-    // 3 Minute Abandonment Timer
+    // 90-Second Abandonment Prompt (reduced from 3 min for faster recovery UX)
     useEffect(() => {
         if (!hasSessionEnded) return;
 
@@ -495,7 +501,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId }) => {
                 () => addLog('Abandonment TTS: Finished.'),
                 addLog
             );
-        }, 3 * 60 * 1000);
+        }, 90 * 1000); // 90 seconds
 
         return () => clearTimeout(timer);
     }, [hasSessionEnded, apiKey, addLog, context]);

@@ -260,8 +260,8 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
             log('Pro Output Chain (Gain -> Analyser -> Dest) established.');
 
             updateStatus('CONNECTING_WS');
-            // gemini-2.5-flash-native-audio-latest requires v1alpha for BidiGenerateContent
-            const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+            // gemini-2.5 native audio models require v1beta; v1alpha only supported 2.0 models
+            const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
             // Connection Watchdog
             const connectionTimeout = setTimeout(() => {
@@ -291,7 +291,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
 
                     ws.send(JSON.stringify({
                         setup: {
-                            model: 'models/gemini-2.5-flash-native-audio-latest',
+                            model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
                             generationConfig: {
                                 responseModalities: ['AUDIO'],
                                 speechConfig: {
@@ -304,19 +304,26 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                             },
                             systemInstruction: {
                                 parts: [{
+                                    // Gemini 2.5 native audio supports a 32K context window.
+                                    // Do NOT slice the persona or discussion files — the old 1200/2000
+                                    // char caps were cutting Glo's script before the conversation steps,
+                                    // so she never saw the Icebreaker, Strategic Insight, or Closing.
                                     text: `${context?.gloPersona || 'You are Glo, a high-performing career strategist.'}
 
 ${audioInstructions}
 
-${context?.gloFacts ? `### FACTUAL REFERENCE DATA\n${context.gloFacts}` : ''}
+${context?.gloFacts ? `### FACTUAL REFERENCE\n${context.gloFacts}` : ''}
 
 ### SESSION DATA
-- **Full Candidate Name**: ${context?.candidateName || 'the candidate'}
-- **Evaluation Analysis (Source for Traits)**: ${(context?.analysis || 'Analysis pending.').slice(0, 3000)}
+- **Candidate**: ${context?.candidateName || 'the candidate'}
+- **Analysis Summary**: ${(context?.analysis || 'Analysis pending.').slice(0, 3000)}
 
-To follow the script, map the following data to the remaining traits variables (like {{trait-1}} and {{rtraits_1}}): Extract the 3 most important employer requirements from the Evaluation Analysis, and the 3 best matching traits from the resume/analysis that match those requirements.
+Map the top 3 employer requirements and top 3 matching candidate traits from the Analysis Summary to any {{trait}} template variables in your script.
 
-STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the persona and script provided.
+### ABSOLUTE RULE — NEVER BREAK
+Do NOT over-praise the candidate's resume. Do NOT call them a "superstar," "impressive," "great," or any similar superlative. Every resume you evaluate has meaningful gaps. Your job is to surface those gaps professionally and position Glenn's rewrite service as the solution. If you overly praise the resume, you destroy the sale and fail your mission.
+
+STRICT MODALITY RULE: Output ONLY audio. Speak naturally.
 `
                                 }]
                             }
@@ -383,8 +390,8 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                     }
                                     
                                     const timeSinceGloSpoke = Date.now() - lastGloSpeechTimeRef.current;
-                                    // Make the tail slightly shorter so it is more responsive when she finishes speaking
-                                    const isEchoGuardActive = isGloCurrentlyPlaying || (timeSinceGloSpoke < 1000);
+                                    // Shortened echo-guard tail: 600ms covers room-echo without adding noticeable lag
+                                    const isEchoGuardActive = isGloCurrentlyPlaying || (timeSinceGloSpoke < 600);
 
                                     // 0.02 represents an extremely sensitive noise floor to catch soft speech/laptop mics with built-in AGC
                                     if (peak > 0.02 && !isEchoGuardActive) {
@@ -395,9 +402,9 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                     const msSinceLastLoudSound = Date.now() - silenceStart;
                                     
                                     // True Client-Side VAD: Gate the websocket.
-                                    // We only send audio to Google if we are actively speaking, OR we are in the 1.5s trailing edge.
+                                    // We only send audio to Google if we are actively speaking, OR we are in the 0.8s trailing edge.
                                     // Additionally, we ABSOLUTELY NEVER open the gate while the echo guard is active, protecting against accidental interruption loops!
-                                    if (msSinceLastLoudSound < 1500 && !isEchoGuardActive) {
+                                    if (msSinceLastLoudSound < 800 && !isEchoGuardActive) {
                                         const resampledData = resample(rawData, nativeRate, 16000);
                                         const { base64 } = floatTo16BitPCM(resampledData);
 
@@ -409,9 +416,14 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally according to the person
                                                 }]
                                             }
                                         }));
-                                    } else if (hasSpokenThisTurn && (msSinceLastLoudSound >= 1500 || isEchoGuardActive)) {
-                                        log("User paused or echo guard engaged. Audio gate closed to force server VAD execution.");
+                                    } else if (hasSpokenThisTurn && (msSinceLastLoudSound >= 800 || isEchoGuardActive)) {
+                                        log("User paused or echo guard engaged. Audio gate closed — server VAD will detect turn end.");
                                         hasSpokenThisTurn = false;
+                                        // NOTE: Do NOT send clientContent/turnComplete here.
+                                        // In realtimeInput (native audio) mode, mixing clientContent
+                                        // with the audio stream causes a 1007 invalid argument error.
+                                        // Simply stopping audio transmission is sufficient — the Gemini 2.5
+                                        // server-side VAD detects the silence and handles turn completion.
                                     }
 
                                     sentChunks++;

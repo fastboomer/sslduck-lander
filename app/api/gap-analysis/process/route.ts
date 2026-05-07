@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 console.log("[GAP_ROUTE] Module Loaded");
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // Claude Sonnet analysis ~15-40s + file extraction buffer
@@ -7,7 +8,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { db } from '@/app/lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
-import { extractTextFromFile, createGapDoc } from '@/lib/gap-utils';
+import { extractTextFromFile, createGapPdf } from '@/lib/gap-utils';
 import { sendGapReport } from '@/app/lib/mail';
 import fs from 'fs';
 import path from 'path';
@@ -134,140 +135,150 @@ export async function POST(req: NextRequest) {
         let exampleTemplate = fs.existsSync(examplePath) ? fs.readFileSync(examplePath, 'utf8') : '';
 
         // 5. Prepare Final Prompt
-        const finalPromptBase = promptTemplate
-            .replace(/\{\{\s*first\\?_name\s*\}\}/g, firstName)
-            .replace(/\{\{\s*last\\?_name\s*\}\}/g, lastName)
-            .replace(/\{\{\s*contact\\?_info\s*\}\}/g, extractedContactInfo || "City, State Not Provided")
-            .replace(/\{\{\s*email\s*\}\}/g, extractedEmail || "Email Not Provided")
-            .replace(/\{\{\s*phone\\?_number\s*\}\}/g, extractedPhone || "Phone Not Found")
-            .replace(/\[\s*first\\?_name\s*\]/g, firstName) // In case old variables still exist
-            .replace(/\{\{\s*job\\?_title\s*\}\}/g, targetJobTitle)
-            .replace(/\[\s*job\\?_title\s*\]/g, targetJobTitle)
+        // CRITICAL: inject resume + job description INTO the template's placeholder
+        // sections so the AI receives inputs BEFORE its output instructions.
+        // Previously these were appended AFTER the output instructions, causing Claude
+        // to write the cover letter blind and stop early.
+        const finalPrompt = promptTemplate
+            // Inject actual content into template input blocks
+            .replace('[PASTE RESUME HERE]', combinedResumeText.substring(0, 10000))
+            .replace('[PASTE JOB DESCRIPTION HERE]', combinedReqText.substring(0, 5000))
+            // Replace all {{variables}} with extracted values
+            .replace(/\{\{\s*first_name\s*\}\}/g, firstName)
+            .replace(/\{\{\s*last_name\s*\}\}/g, lastName)
+            .replace(/\{\{\s*contact_info\s*\}\}/g, extractedContactInfo || 'City, State Not Provided')
+            .replace(/\{\{\s*email\s*\}\}/g, extractedEmail || 'Email Not Provided')
+            .replace(/\{\{\s*phone_number\s*\}\}/g, extractedPhone || 'Phone Not Found')
+            .replace(/\{\{\s*job_title\s*\}\}/g, targetJobTitle)
             .replace(/\{\{\s*employer\s*\}\}/g, targetCompany)
-            .replace(/\[\s*target\\?_company\s*\]/g, targetCompany)
-            .replace(/<example>[\s\S]*?<\/example>/gi, `<example>\n${exampleTemplate}\n</example>`);
+            // Legacy bracket-style variables
+            .replace(/\[\s*first_name\s*\]/g, firstName)
+            .replace(/\[\s*job_title\s*\]/g, targetJobTitle)
+            .replace(/\[\s*target_company\s*\]/g, targetCompany)
+            // Replace any example blocks
+            .replace(/<example>[\s\S]*?<\/example>/gi, `<example>\n${exampleTemplate}\n<\/example>`);
 
-        // Safely enforce tags at the very bottom since they may have failed to replace if malformed
-        const finalPrompt = finalPromptBase + `\n\n<job-description>\n${combinedReqText}\n</job-description>\n\n<requirements>\n${combinedReqText}\n</requirements>\n\n<resume>\n${combinedResumeText}\n</resume>`;
-
-        // 6. Execute AI — Claude Sonnet handles the full analysis (original setup)
-        // Gemini Flash handles the lightweight extraction calls above (job title, candidate name)
-        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Executing GAP Analysis with Claude Sonnet...`);
-        let analysis = '';
-
+        // 6. Quick Glo Context Brief (Synchronous, ~8-12 seconds)
+        // Generates only what Glo needs for the voice conversation. The full 5-report
+        // analysis runs in the background and is emailed as a Word doc attachment.
+        console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Generating quick Glo brief...`);
+        let gloBrief = '';
         try {
-            let usedFallback = false;
+            const { text: briefText } = await generateText({
+                model: googleAI('gemini-2.5-flash'),
+                prompt: `You are a senior career strategist. Based on the resume and job description below, generate a focused 400-500 word executive brief using EXACTLY this format (replace all bracketed placeholders with real data):
 
-            try {
-                console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Trying Claude Sonnet (60s timeout)...`);
-                const { text } = await generateText({
-                    model: anthropic('claude-sonnet-4-5'),
-                    prompt: finalPrompt,
-                    maxOutputTokens: 4096,
-                    maxRetries: 0,
-                    abortSignal: AbortSignal.timeout(60000), // Hard cap: abort if Claude hangs past 60s
-                });
-                analysis = text;
-                console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Claude Sonnet completed successfully.`);
-            } catch (claudeErr: any) {
-                console.warn(`[GAP_PROCESS] Claude Sonnet failed (${claudeErr.name}: ${claudeErr.message}). Falling back to Gemini Flash...`);
-                usedFallback = true;
-            }
+**Candidate**: ${candidateName}
+**Target Role**: ${targetJobTitle} at ${targetCompany}
+**Match Score**: [X]% (ATS estimate)
+**Overall Suitability**: [Low / Medium / High] — [one-sentence reason]
 
-            // Gemini 2.5 Flash fallback — ~10-20s, already configured, no rate limit issues
-            if (usedFallback || !analysis.trim()) {
-                console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Running Gemini 2.5 Flash fallback...`);
-                const { text: flashText } = await generateText({
-                    model: googleAI('gemini-2.5-flash'),
-                    prompt: finalPrompt,
-                    maxOutputTokens: 4096,
-                    maxRetries: 0,
-                });
-                analysis = flashText;
-                console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Gemini Flash fallback completed.`);
-            }
+**Top 3 Resume Strengths for This Role**:
+1. [Specific strength with evidence from resume]
+2. [Specific strength with evidence from resume]
+3. [Specific strength with evidence from resume]
 
-        } catch (error: any) {
-            console.error(`[GAP_PROCESS] [${new Date().toISOString()}] All AI providers failed:`, error);
-            const detailedError = error.cause ? error.cause.message || error.cause : JSON.stringify(error, Object.getOwnPropertyNames(error));
-            throw new Error(`AI Analysis failed: ${detailedError}`);
-        }
+**Top 3 Critical Gaps**:
+1. [Specific missing skill or experience and why it matters]
+2. [Specific missing skill or experience and why it matters]
+3. [Specific missing skill or experience and why it matters]
 
-        if (!analysis.trim()) throw new Error("AI generated an empty analysis.");
+**Key Insight** (2-3 sentences — biggest opportunity and risk for this candidate in this role):
+[Concise strategic insight]
 
-        // 7. Save to Firestore (Audit Log)
-        console.log("[GAP_PROCESS] Saving to Firestore...");
-        const reportId = `gap-${Date.now()}`;
-        if (db) {
-            try {
-                await setDoc(doc(db, 'gap-reports', reportId), {
-                    reportId,
-                    candidateName,
-                    jobLink: `${targetJobTitle} at ${targetCompany}`,
-                    analysis,
-                    resumeText: combinedResumeText,
-                    jobDescription: combinedReqText,
-                    createdAt: new Date().toISOString(),
-                    status: 'completed'
-                });
-                console.log("[GAP_PROCESS] Saved to Firestore successfully. ID:", reportId);
-            } catch (fsErr: any) {
-                console.error("Firestore Save Error:", fsErr);
-                throw new Error(`Failed to save report to database: ${fsErr.message}`);
-            }
-        } else {
-            throw new Error("Database connection unavailable.");
-        }
+Resume:
+${combinedResumeText.substring(0, 3000)}
 
-        // 8. Send to Webhook (Internal GAP Dispatch)
-        const payload = {
-            name: candidateName,
-            jobLink: `${targetJobTitle} at ${targetCompany}`,
-            styledReport: analysis
-        };
-        // [MODIFIED]: We are completely disabling the Google Apps Script Webhook 
-        // because it ignores all styling and target emails. We are now using Resend exclusively.
-        console.log("[GAP_PROCESS] Webhook dispatch is disabled. Sending emails via Resend exclusively.");
-        /*
-        console.log("[GAP_PROCESS] Dispatching to Webhook. Payload size:", JSON.stringify(payload).length);
-        const webhookUrl = 'https://script.google.com/macros/s/AKfycbztlk4VOMWB8A6Wh_IUobjZ5dho_KYp-EgtLTE-mWogE26FNjmKzM8C1vxqpHqcMvLb/exec';
-
-        try {
-            const webhookResponse = await fetch(webhookUrl, {
-                method: 'POST',
-                body: JSON.stringify(payload),
-                headers: { 'Content-Type': 'application/json' },
-                signal: AbortSignal.timeout(30000) // 30s timeout
+Job Description:
+${combinedReqText.substring(0, 2000)}`,
+                maxOutputTokens: 700,
+                maxRetries: 0,
             });
-
-            if (!webhookResponse.ok) {
-                const errorText = await webhookResponse.text();
-                console.error("Webhook Error Status:", webhookResponse.status, errorText);
-            } else {
-                console.log("[GAP_PROCESS] Webhook dispatch successful.");
-            }
-        } catch (webhookErr: any) {
-            console.error("Failed to send to webhook:", webhookErr.message);
+            gloBrief = briefText;
+            console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Glo brief generated (${gloBrief.length} chars).`);
+        } catch (briefErr: any) {
+            console.error(`[GAP_PROCESS] Glo brief failed, using placeholder:`, briefErr.message);
+            gloBrief = `Candidate: ${candidateName}\nTarget Role: ${targetJobTitle} at ${targetCompany}\nAnalysis is being prepared. Key context will be available shortly.`;
         }
-        */
 
-        // 9. Return success — user proceeds to audio page immediately
-        // after() is Next.js 15+ post-response hook: Vercel keeps the function warm
-        // until the background promise resolves (unlike Promise.resolve().then which can be killed)
+        // 7. Save Glo brief to Firestore immediately — user can redirect now
+        console.log("[GAP_PROCESS] Saving Glo brief to Firestore...");
+        const reportId = `gap-${Date.now()}`;
+        if (!db) throw new Error("Database connection unavailable.");
+        try {
+            await setDoc(doc(db, 'gap-reports', reportId), {
+                reportId,
+                candidateName,
+                jobLink: `${targetJobTitle} at ${targetCompany}`,
+                gloBrief,                     // Fast context for Glo voice session
+                analysis: gloBrief,           // Seed full analysis field with brief (updated in BG)
+                resumeText: combinedResumeText,
+                jobDescription: combinedReqText,
+                createdAt: new Date().toISOString(),
+                status: 'processing'          // BG will update to 'completed'
+            });
+            console.log("[GAP_PROCESS] Glo brief saved to Firestore. ID:", reportId);
+        } catch (fsErr: any) {
+            console.error("Firestore Save Error:", fsErr);
+            throw new Error(`Failed to save report to database: ${fsErr.message}`);
+        }
+
+        // 8. Return success — user is redirected to voice phase immediately
         const reportResponse = NextResponse.json({
             success: true,
-            reportId: reportId,
+            reportId,
             candidateName,
-            message: "Report processed and dispatched."
+            message: "Report processing. Glo is ready."
         });
 
-        // after() caused 504 on Vercel by holding the response open past maxDuration.
-        // Promise.resolve().then() schedules work as a microtask AFTER return fires,
-        // so the HTTP response is sent immediately while doc/email run in the background.
-        Promise.resolve().then(async () => {
+        // 9. Background — Full 5-report analysis + Word doc + email
+        // waitUntil() keeps Vercel function alive in production.
+        // In local dev, waitUntil is a no-op (no Vercel context), so we
+        // also fire the async job directly to ensure it runs during testing.
+        const bgJob = (async () => {
             try {
-                console.log("[GAP_PROCESS] [BG] Generating Word document...");
-                const docBuffer = await createGapDoc(analysis, targetCompany);
+                console.log("[GAP_PROCESS] [BG] Starting full analysis generation...");
+
+                // Full analysis: try Claude 3.5 Sonnet first (reliable, ~20-40s for this prompt)
+                let analysis = '';
+                try {
+                    console.log("[GAP_PROCESS] [BG] Trying claude-3-5-sonnet-20241022...");
+                    const { text } = await generateText({
+                        model: anthropic('claude-3-5-sonnet-20241022'),
+                        prompt: finalPrompt,
+                        maxOutputTokens: 8192, // 6-section report needs room; 4096 was cutting off
+                        maxRetries: 0,
+                        abortSignal: AbortSignal.timeout(90000),
+                    });
+                    analysis = text;
+                    console.log(`[GAP_PROCESS] [BG] Claude completed (${analysis.length} chars).`);
+                } catch (claudeErr: any) {
+                    console.warn(`[GAP_PROCESS] [BG] Claude failed: ${claudeErr.message}. Falling back to Gemini Flash...`);
+                    const { text: flashText } = await generateText({
+                        model: googleAI('gemini-2.5-flash'),
+                        prompt: finalPrompt,
+                        maxOutputTokens: 8192,
+                        maxRetries: 0,
+                    });
+                    analysis = flashText;
+                    console.log(`[GAP_PROCESS] [BG] Gemini Flash fallback completed (${analysis.length} chars).`);
+                }
+
+                if (!analysis.trim()) {
+                    console.error("[GAP_PROCESS] [BG] Full analysis was empty. Skipping doc/email.");
+                    return;
+                }
+
+                // Update Firestore with full analysis
+                await setDoc(doc(db, 'gap-reports', reportId), {
+                    analysis,
+                    status: 'completed'
+                }, { merge: true });
+                console.log("[GAP_PROCESS] [BG] Full analysis saved to Firestore.");
+
+                // Create PDF report (read-only for candidate; Word is for purchased rewrites)
+                console.log("[GAP_PROCESS] [BG] Generating PDF report...");
+                const pdfBuffer = await createGapPdf(analysis, targetCompany);
 
                 const safeName = candidateName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
                 const timestamp = Date.now().toString().slice(-6);
@@ -275,24 +286,27 @@ export async function POST(req: NextRequest) {
 
                 const gapUsersDir = path.join(os.tmpdir(), 'GAP-USERS');
                 if (!fs.existsSync(gapUsersDir)) fs.mkdirSync(gapUsersDir, { recursive: true });
-
-                fs.writeFileSync(path.join(gapUsersDir, `${filename}.docx`), docBuffer);
+                fs.writeFileSync(path.join(gapUsersDir, `${filename}.pdf`), pdfBuffer);
                 fs.writeFileSync(path.join(os.tmpdir(), 'GAP-USERS', `${filename}.md`), analysis);
-                console.log("[GAP_PROCESS] [BG] Word doc saved:", filename);
+                console.log("[GAP_PROCESS] [BG] PDF saved:", filename);
 
                 const targetEmail = (extractedEmail && extractedEmail.trim().includes('@')) ? extractedEmail.trim() : 'glenn@sslduck.net';
                 const bccEmail = 'glenn@sslduck.net';
                 const bccParams = targetEmail.toLowerCase() === bccEmail.toLowerCase() ? undefined : bccEmail;
 
-                console.log("[GAP_PROCESS] [BG] Emailing report to:", targetEmail);
-                await sendGapReport(targetEmail, candidateName, docBuffer, filename, bccParams);
+                console.log("[GAP_PROCESS] [BG] Emailing PDF report to:", targetEmail);
+                await sendGapReport(targetEmail, candidateName, pdfBuffer, filename, bccParams);
                 console.log("[GAP_PROCESS] [BG] Email sent successfully.");
             } catch (bgErr: any) {
-                console.error("[GAP_PROCESS] [BG] Background doc/email failed:", bgErr.message);
+                console.error("[GAP_PROCESS] [BG] Background analysis/email failed:", bgErr.message);
             }
-        });
+        })();
+        // Wire to waitUntil for Vercel production (keeps function alive).
+        // In local dev getContext().waitUntil is undefined, so this is a no-op there —
+        // but bgJob is already running directly above.
+        try { waitUntil(bgJob); } catch (_) { /* local dev — bgJob already running */ }
 
-        console.log("[GAP_PROCESS] Returning success. Doc/email running via after().");
+        console.log("[GAP_PROCESS] Returning success. Full analysis + email running in background.");
         return reportResponse;
 
     } catch (error: any) {

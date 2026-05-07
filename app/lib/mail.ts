@@ -30,12 +30,13 @@ export async function sendGapReport(
         const htmlBody = `
 <div style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px; line-height: 1.8; color: #1a1a1a; max-width: 680px; margin: 0 auto; padding: 32px 24px;">
   <p>Hi ${firstName},</p>
-  <p>Your <strong>Suitability Study</strong> is ready. Please open the attached Word document for your complete report — it includes your Gap Analysis, ATS keyword review, achievement rewrites, positioning strategy, and cover letter guidance.</p>
-  <p>The document is fully editable so you can copy sections directly into your resume or cover letter.</p>
-  <p style="margin-top: 32px;">Best regards,<br><strong>The SSLDUCK Team</strong></p>
+  <p>Your <strong>Suitability Study</strong> is attached as a PDF. It includes your Gap Analysis, ATS keyword review, personal summary from GLO, resume best practices checklist, and a set of probable interview questions.</p>
+  <p>Review it alongside the conversation you just had with Glo — and check your screen for Glenn's special offer on a complete professional resume rewrite.</p>
+  <p style="margin-top: 32px;">Best regards,<br><strong>Glenn &amp; the SSLDUCK Team</strong></p>
   <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;" />
   <p style="font-size: 12px; color: #6b7280;">Questions? Reply to this email or visit <a href="https://sslduck.net" style="color: #2563eb;">sslduck.net</a>.</p>
 </div>`;
+
 
         const { data, error } = await resend.emails.send({
             from: 'SSLDUCK Reports <reports@sslduck.net>',
@@ -45,7 +46,7 @@ export async function sendGapReport(
             html: htmlBody,
             attachments: [
                 {
-                    filename: `${filename}.docx`,
+                    filename: `${filename}.pdf`,
                     content: docBuffer,
                 },
             ],

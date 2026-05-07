@@ -43,12 +43,13 @@ export async function GET(
         const gloAudioInstructions = loadPrompt('glo-audio-discussion.md');
         const gloFacts = loadPrompt('glo-facts.md');
 
-        // Return only the context Glo needs to keep the payload tight
+        // Return only the context Glo needs to keep the payload tight.
+        // 'analysis' may still be the gloBrief seed if the full background analysis isn't done yet.
         return NextResponse.json({
             candidateName: data.candidateName || 'Candidate',
             resumeText: data.resumeText || '',
             jobDescription: data.jobDescription || '',
-            analysis: data.analysis || '',
+            analysis: data.analysis || data.gloBrief || '',
             jobLink: data.jobLink || '',
             gloPersona,
             gloAudioInstructions,
