@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 
 /**
  * useGeminiLive Hook - Pro Audio Version (2026)
- * Uses v1alpha BidiGenerateContent + Gemini 2.0 Native Audio.
+ * Uses v1beta BidiGenerateContent + Gemini 2.5 Native Audio (stable GA).
  * Implements Sample-Accurate Scheduling & Jitter Buffering for zero-gap playback.
  */
 
@@ -291,7 +291,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
 
                     ws.send(JSON.stringify({
                         setup: {
-                            model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
+                            model: 'models/gemini-2.5-flash-native-audio',
                             generationConfig: {
                                 responseModalities: ['AUDIO'],
                                 speechConfig: {
