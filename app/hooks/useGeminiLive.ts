@@ -295,7 +295,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
 
                     ws.send(JSON.stringify({
                         setup: {
-                            model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
+                            model: 'models/gemini-3.1-flash-live-preview',
                             generationConfig: {
                                 responseModalities: ['AUDIO'],
                                 speechConfig: {
