@@ -72,81 +72,110 @@ export async function createGapPdf(analysis: string, companyName: string): Promi
 
         // ── Body — parse markdown-lite ──────────────────────────────────────
         const lines = analysis.split('\n');
+        let firstH2Seen = false;      // triggers page break after cover letter
+        let skipChecklist = false;    // suppresses Best Practices Checklist section
 
         for (const rawLine of lines) {
             const line = rawLine.trimEnd();
+
+            // ── Section skip: Best Practices Checklist ──────────────────────
+            if (line.startsWith('## ') && line.includes('Best Practices Checklist')) {
+                skipChecklist = true;
+                continue;
+            }
+            if (skipChecklist) {
+                // Resume rendering when the next ## heading appears
+                if (line.startsWith('## ')) {
+                    skipChecklist = false;
+                    // fall through to render this heading
+                } else {
+                    continue;
+                }
+            }
 
             if (line.startsWith('# ')) {
                 doc.moveDown(0.8)
                    .font('Helvetica-Bold').fontSize(15).fillColor('#1a1a2e')
                    .text(line.replace(/^# /, ''), { continued: false });
                 doc.moveDown(0.3);
+
             } else if (line.startsWith('## ')) {
+                // Page break after cover letter — triggers on first ## heading
+                if (!firstH2Seen) {
+                    doc.addPage();
+                    firstH2Seen = true;
+                }
+
+                let heading = line.replace(/^## /, '');
+
+                // Rename Report 1 heading
+                if (heading === 'Professional Profile') {
+                    heading = 'Remarks From Glo';
+                }
+
+                // New page + title fix for Interview Questions
+                if (heading.startsWith('Bonus: Probable Interview Questions')) {
+                    doc.addPage();
+                    heading = 'Bonus: Probable Interview Questions to Expect (Based on your Resume)';
+                }
+
                 doc.moveDown(0.6)
                    .font('Helvetica-Bold').fontSize(13).fillColor('#003366')
-                   .text(line.replace(/^## /, ''), { continued: false });
+                   .text(heading, { continued: false });
                 doc.moveDown(0.3);
+
             } else if (line.startsWith('### ')) {
                 doc.moveDown(0.4)
                    .font('Helvetica-Bold').fontSize(11).fillColor('#333333')
                    .text(line.replace(/^### /, ''), { continued: false });
                 doc.moveDown(0.2);
+
             } else if (line.startsWith('---')) {
                 doc.moveDown(0.4);
                 doc.moveTo(72, doc.y).lineTo(doc.page.width - 72, doc.y).strokeColor('#dddddd').stroke();
                 doc.moveDown(0.4);
+
             } else if (line.trim() === '') {
                 doc.moveDown(0.35);
+
             } else if (line.startsWith('| ')) {
                 // Markdown table row — render as plain indented text
                 const cells = line.split('|').map(c => c.trim()).filter(c => c && c !== '---' && !/^[-:]+$/.test(c));
                 if (cells.length >= 2) {
-                    const isHeader = line.includes('---|');
-                    doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica')
-                       .fontSize(9).fillColor('#111111')
+                    doc.font('Helvetica').fontSize(9).fillColor('#111111')
                        .text(`  ${cells[0]}   →   ${cells[1]}`, { indent: 8 });
                 } else if (cells.length === 1) {
                     doc.font('Helvetica').fontSize(9).fillColor('#111111')
                        .text(`  ${cells[0]}`, { indent: 8 });
                 }
+
             } else {
                 // Normal paragraph — handle inline **bold**
                 const parts = line.split(/(\*\*.*?\*\*)/);
 
                 if (parts.length === 1) {
-                    // Pure plain text — no bold markers
+                    // Pure plain text
                     doc.font('Helvetica').fontSize(10).fillColor('#111111')
                        .text(line, { continued: false });
-                    doc.moveDown(0.2);
+
                 } else if (
                     line.startsWith('**') &&
                     line.endsWith('**') &&
                     line.split('**').length === 3
                 ) {
-                    // Entirely bold line (e.g. "**1. Tell me about your experience.**")
-                    // Write with continued:false so PDFKit advances Y correctly — NO overprint.
+                    // Entirely bold line (interview question headers, etc.)
+                    // Use continued:false — guaranteed Y advance, no overprint
                     doc.moveDown(0.35);
                     doc.font('Helvetica-Bold').fontSize(10).fillColor('#111111')
                        .text(line.slice(2, -2), { continued: false });
                     doc.moveDown(0.2);
+
                 } else {
-                    // Mixed bold + plain inline
-                    let started = false;
-                    for (const part of parts) {
-                        if (!part) continue;
-                        if (part.startsWith('**') && part.endsWith('**')) {
-                            doc.font('Helvetica-Bold').fontSize(10).fillColor('#111111')
-                               .text(part.slice(2, -2), { continued: true });
-                        } else {
-                            doc.font('Helvetica').fontSize(10).fillColor('#111111')
-                               .text(part, { continued: true });
-                        }
-                        started = true;
-                    }
-                    // Reset to plain font before flushing — ensures correct line-height measurement
-                    doc.font('Helvetica').fontSize(10).fillColor('#111111');
-                    if (started) doc.text('', { continued: false }); // flush inline sequence
-                    doc.moveDown(0.25); // guarantee gap before next line
+                    // Mixed bold + plain: strip bold markers to avoid PDFKit
+                    // continued:true wrapping bugs that cause line overprints
+                    const stripped = line.replace(/\*\*(.*?)\*\*/g, '$1');
+                    doc.font('Helvetica').fontSize(10).fillColor('#111111')
+                       .text(stripped, { continued: false });
                 }
             }
         }

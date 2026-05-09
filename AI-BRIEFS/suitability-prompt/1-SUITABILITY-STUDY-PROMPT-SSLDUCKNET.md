@@ -2,16 +2,15 @@
 
 ## OUTPUT CONTRACT (READ FIRST, OBEY ABSOLUTELY)
 
-You will produce **6 sections in this exact order**, with NO preamble before Section 1 and NO commentary between sections:
+You will produce **5 sections in this exact order**, with NO preamble before Section 1 and NO commentary between sections:
 
 1. **Cover Letter** (from Glenn, addressed to the client)
 2. **REPORT 1** — Professional Profile (3 Versions)
 3. **REPORT 2** — Probable ATS Diagnosis
 4. **REPORT 3** — Personal Summary from GLO
-5. **REPORT 4** — Resume Best Practices Checklist Table
-6. **REPORT 5** — Probable Interview Questions
+5. **REPORT 4** — Probable Interview Questions
 
-**Do not stop until all 6 sections are complete.** If you find yourself wanting to wrap up, stop, or ask a question — keep going. The deliverable is incomplete until Report 5 is finished.
+**Do not stop until all 5 sections are complete.** If you find yourself wanting to wrap up, stop, or ask a question — keep going. The deliverable is incomplete until Report 4, question 10 is answered.
 
 Do not include the words "Section 1," "Section 2," etc. in your output. Use the headers shown in each section's instructions.
 
@@ -220,44 +219,12 @@ GLO
 
 ---
 
-## SECTION 5 — REPORT 4: RESUME BEST PRACTICES CHECKLIST
+## SECTION 5 — REPORT 4: PROBABLE INTERVIEW QUESTIONS
 
 Output this exact heading:
 
 ```
-## Bonus: Resume Best Practices Checklist
-```
-
-Then output a markdown table using **exactly this structure**. Plain text in cells only — no H3 headers inside cells.
-
-```
-| Resume Best Practice | {{first_name}} {{last_name}} |
-|---|---|
-| City, State, Zip ONLY (no street address) | [PASS or FAIL — if FAIL, brief reason] |
-| Telephone (cell with area code) | [PASS or FAIL — if FAIL, brief reason] |
-| Email (professional, not e.g. hotstuff@lovemail.com) | [PASS or FAIL — if FAIL, brief reason] |
-| LinkedIn URL present (PASS even if http/www missing) | [PASS or FAIL — if FAIL, brief reason] |
-| Work Accomplishments (≥2 per role, with metrics) | [PASS or FAIL — if FAIL, brief reason] |
-| Reverse Chronological Work History | [PASS or FAIL — if FAIL, brief reason] |
-| No graphics or photos | [PASS or FAIL — if FAIL, brief reason] |
-| Bullet points emphasize accomplishments, not duties | [PASS or FAIL — if FAIL, brief reason] |
-| Education section placed at end (exception: student resumes) | [PASS or FAIL — if FAIL, brief reason] |
-| No references displayed | [PASS or FAIL — if FAIL, brief reason] |
-| Exact job title match below "Professional Profile" header | [PASS or FAIL — if FAIL, brief reason] |
-| No Objective section or statement | [PASS or FAIL — if FAIL, brief reason] |
-| Professional Profile paragraph at top of resume | [PASS or FAIL — if FAIL, brief reason] |
-```
-
-**→ Continue immediately to REPORT 5.**
-
----
-
-## SECTION 6 — REPORT 5: PROBABLE INTERVIEW QUESTIONS
-
-Output this exact heading:
-
-```
-## Bonus: Probable Interview Questions to Expect
+## Bonus: Probable Interview Questions to Expect (Based on your Resume)
 ```
 
 List **10 numbered questions** the employer would likely ask based on the job requirements. After each question, provide a best-answer suggestion drawn from the resume.
@@ -276,7 +243,7 @@ Format each item like this:
 
 …and so on through question 10.
 
-**Rules for Report 5:**
+**Rules for Report 4:**
 - Do NOT display source information, URLs, or references.
 - Do NOT ask for further input.
 - Do NOT add a closing or summary after question 10 — end the document there.
@@ -285,6 +252,6 @@ Format each item like this:
 
 ## FINAL CONTRACT REMINDER
 
-You have now been instructed to produce all 6 sections: Cover Letter + 5 Reports. **Produce all of them in a single response, in order, without pausing or asking for confirmation.** The output is incomplete until Report 5, question 10 is answered.
+You have now been instructed to produce all 5 sections: Cover Letter + 4 Reports. **Produce all of them in a single response, in order, without pausing or asking for confirmation.** The output is incomplete until Report 4, question 10 is answered.
 
 **Begin output now.**
