@@ -293,22 +293,21 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                         .replace(/\{\{\s*job_title\s*\}\}/g, jobTitle)
                         .replace(/\{\{\s*target_company\s*\}\}/g, targetCompany);
 
+                    // Gemini 3.1 Live API uses 'config' (not 'setup') with flattened generationConfig fields
                     ws.send(JSON.stringify({
-                        setup: {
+                        config: {
                             model: 'models/gemini-3.1-flash-live-preview',
-                            generationConfig: {
-                                responseModalities: ['AUDIO'],
-                                speechConfig: {
-                                    voiceConfig: {
-                                        prebuiltVoiceConfig: {
-                                            voiceName: 'Kore'
-                                        }
+                            responseModalities: ['AUDIO'],
+                            speechConfig: {
+                                voiceConfig: {
+                                    prebuiltVoiceConfig: {
+                                        voiceName: 'Kore'
                                     }
                                 }
                             },
                             systemInstruction: {
                                 parts: [{
-                                    // Gemini 2.5 native audio supports a 32K context window.
+                                    // Gemini 3.1 native audio supports a 32K context window.
                                     // Do NOT slice the persona or discussion files — the old 1200/2000
                                     // char caps were cutting Glo's script before the conversation steps,
                                     // so she never saw the Icebreaker, Strategic Insight, or Closing.
@@ -412,12 +411,13 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally.
                                         const resampledData = resample(rawData, nativeRate, 16000);
                                         const { base64 } = floatTo16BitPCM(resampledData);
 
+                                        // Gemini 3.1: use audio object instead of deprecated mediaChunks
                                         ws.send(JSON.stringify({
                                             realtimeInput: {
-                                                mediaChunks: [{
-                                                    mimeType: 'audio/pcm;rate=16000',
-                                                    data: base64
-                                                }]
+                                                audio: {
+                                                    data: base64,
+                                                    mimeType: 'audio/pcm;rate=16000'
+                                                }
                                             }
                                         }));
                                     } else {
@@ -434,12 +434,13 @@ STRICT MODALITY RULE: Output ONLY audio. Speak naturally.
                                             const silenceData = new Float32Array(rawData.length); // zeroed = silence
                                             const resampledSilence = resample(silenceData, nativeRate, 16000);
                                             const { base64: silenceBase64 } = floatTo16BitPCM(resampledSilence);
+                                            // Gemini 3.1: use audio object instead of deprecated mediaChunks
                                             ws.send(JSON.stringify({
                                                 realtimeInput: {
-                                                    mediaChunks: [{
-                                                        mimeType: 'audio/pcm;rate=16000',
-                                                        data: silenceBase64
-                                                    }]
+                                                    audio: {
+                                                        data: silenceBase64,
+                                                        mimeType: 'audio/pcm;rate=16000'
+                                                    }
                                                 }
                                             }));
                                         }
