@@ -260,7 +260,11 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
             log('Pro Output Chain (Gain -> Analyser -> Dest) established.');
 
             updateStatus('CONNECTING_WS');
-            // gemini-2.5 native audio models require v1beta; v1alpha only supported 2.0 models
+            // IMPORTANT: This hook uses the Gemini Developer API (generativelanguage.googleapis.com), NOT Vertex AI.
+            // Vertex AI uses different model IDs (e.g. "gemini-live-2.5-flash-native-audio").
+            // For this endpoint + v1beta, the available native audio Live models are:
+            //   - gemini-2.5-flash-native-audio-preview-12-2025  (2.5 Flash Live, current best)
+            //   - gemini-3.1-flash-live-preview                  (newer, if available on your key)
             const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
             // Connection Watchdog
@@ -277,7 +281,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                     clearTimeout(connectionTimeout);
                     if (wsRef.current !== ws) return;
                     updateStatus('HANDSHAKING');
-                    log('WebSocket Open. Sending Setup (Glo 2.0)...');
+                    log('WebSocket Open. Sending Setup (Glo 2.5)...');
 
                     const firstName = context?.candidateName?.split(' ')[0] || 'Candidate';
                     const jobTitle = context?.jobLink ? context.jobLink.split(' at ')[0] : 'Target Role';
@@ -291,7 +295,7 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
 
                     ws.send(JSON.stringify({
                         setup: {
-                            model: 'models/gemini-2.5-flash-native-audio',
+                            model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
                             generationConfig: {
                                 responseModalities: ['AUDIO'],
                                 speechConfig: {
