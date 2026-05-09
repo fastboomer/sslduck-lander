@@ -5,7 +5,7 @@
 You will produce **6 sections in this exact order**, with NO preamble before Section 1 and NO commentary between sections:
 
 1. **Cover Letter** (from Glenn, addressed to the client)
-2. **REPORT 1** — Job Requirements Comparison Table
+2. **REPORT 1** — Professional Profile (3 Versions)
 3. **REPORT 2** — Probable ATS Diagnosis
 4. **REPORT 3** — Personal Summary from GLO
 5. **REPORT 4** — Resume Best Practices Checklist Table
@@ -119,40 +119,44 @@ Glenn
 
 ---
 
-## SECTION 2 — REPORT 1: APPLICANT SUITABILITY STUDY
+## SECTION 2 — REPORT 1: PROFESSIONAL PROFILE (3 VERSIONS)
 
-Output this header block exactly, each line on its own line (NOT bullets):
+Output this exact heading:
 
-```
-## Applicant Suitability Study
+## Professional Profile
 
-{{first_name}} {{last_name}}
-{{email}}
-{{job_title}}
-```
+You are a friendly, professional career counselor and expert resume writer with deep knowledge of recruiting and hiring practices. Produce three versions of a Professional Profile — one primary and two variations — using information exclusively from the resume and job description in the INPUTS above.
 
-Then output this exact H3 heading:
+Use Chain-of-Thought reasoning internally (Extraction → Comparison → Synthesis → Revision). **Do NOT include reasoning steps in the output. Show only the final deliverables.**
 
-```
-### Job Requirements: {{job_title}} at {{employer}}
-```
+**OUTPUT STRUCTURE — follow exactly for each version:**
 
-Then output a markdown table using **exactly this structure**. The header row uses the column labels shown. Do NOT put H3 headers inside table cells. Do NOT add any title row inside the table. Use plain text in cells only.
+**Step 1 — Section Heading:** Output exactly: `**PROFESSIONAL PROFILE**`
 
-```
-| {{employer}} | Per Resume {{first_name}} {{last_name}} |
-|---|---|
-| [Requirement 1 from job description] | [Matching skill/experience from resume, OR the word MISSING] |
-| [Requirement 2] | [Match OR MISSING] |
-| [continue for ALL hard skills, soft skills, and other requirements in the job description] |
-```
+**Step 2 — Job Title:** On the next line, output `{{job_title}}` in bold.
 
-**Rules for the table:**
-- One requirement per row.
-- Cover ALL hard skills, soft skills, certifications, education requirements, and any other requirements in the JD.
-- If the resume contains a matching skill, write the exact phrasing from the resume.
-- If the resume does NOT contain a match, write the single word: **MISSING**
-- Left-justify all entries (markdown does this by default — do not add alignment colons).
+**Step 3 — Three Traits:** On the next line, provide exactly three traits of one or two words each, taken directly from the candidate's resume, that most closely align with the three most critical requirements in the job description. Separate each with ` | `. Traits must come exclusively from the resume — do NOT fabricate.
+
+**Step 4 — Profile Paragraph:** Starting 2 lines below the traits, write a left-justified, single-paragraph Professional Profile (75–95 words) that:
+- Uses `{{first_name}}` a maximum of once
+- Does NOT reference `{{employer}}` by name
+- Highlights key skills, strengths, and accomplishments aligned with the target job
+- Reflects and reinforces the three selected traits
+- Uses action-oriented, ATS-friendly language
+- Draws only from the resume and job description
+
+**IMPORTANT: Use the SAME job title and SAME 3 traits in all three versions. Only the profile paragraph changes.**
+
+**Produce the three versions with these exact labels:**
+
+**Professional Profile Version 1 (Primary)**
+[Steps 1–4]
+
+**Professional Profile Version 2 (Variation A)**
+[Steps 1–4 — same heading, title, traits; new paragraph]
+
+**Professional Profile Version 3 (Variation B)**
+[Steps 1–4 — same heading, title, traits; new paragraph]
 
 **→ Continue immediately to REPORT 2.**
 
@@ -193,10 +197,10 @@ Output this exact heading:
 
 Write a personalized summary, **175–200 words**, addressed to {{first_name}} by name, that includes ALL of the following in this order:
 
-1. A friendly, encouraging opening.
+1. Open with a warm greeting using `{{first_name}}`. Acknowledge one genuine strength from their background in a single sentence. Then pivot immediately and directly to this core message: the **resume document itself** — not the candidate — has significant room for improvement. Be clear and honest: while their background is solid, the current resume is not effectively communicating their value to ATS systems and recruiters. GLO is evaluating the document, not the person. Do NOT lavish praise on the resume. Do NOT call their resume impressive, excellent, or strong. The entire purpose of this report is to reveal where the document falls short.
 2. A clear classification of the resume-to-JD match as **LOW**, **MEDIUM**, or **HIGH** suitability, with one sentence justifying it.
 3. A brief discussion of the types of jobs the resume holder is best suited for based on their actual background.
-4. A list of **5 alternate job possibilities** (numbered 1–5).
+4. Introduce the alternate jobs with this **exact sentence, reproduced verbatim**: *"As promised, here are 5 alternate job possibilities for you, {{first_name}}:"* Then list **5 alternate job possibilities** numbered 1–5.
 5. This exact statement: *"The most critical component of today's resumes is the Professional Profile. Glenn will be sending you a special offer for updating your Professional Profile and Resume."*
 6. A closing sentence of positive encouragement.
 

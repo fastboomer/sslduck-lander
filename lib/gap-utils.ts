@@ -112,9 +112,25 @@ export async function createGapPdf(analysis: string, companyName: string): Promi
             } else {
                 // Normal paragraph — handle inline **bold**
                 const parts = line.split(/(\*\*.*?\*\*)/);
+
                 if (parts.length === 1) {
-                    doc.font('Helvetica').fontSize(10).fillColor('#111111').text(line, { continued: false });
+                    // Pure plain text — no bold markers
+                    doc.font('Helvetica').fontSize(10).fillColor('#111111')
+                       .text(line, { continued: false });
+                    doc.moveDown(0.2);
+                } else if (
+                    line.startsWith('**') &&
+                    line.endsWith('**') &&
+                    line.split('**').length === 3
+                ) {
+                    // Entirely bold line (e.g. "**1. Tell me about your experience.**")
+                    // Write with continued:false so PDFKit advances Y correctly — NO overprint.
+                    doc.moveDown(0.35);
+                    doc.font('Helvetica-Bold').fontSize(10).fillColor('#111111')
+                       .text(line.slice(2, -2), { continued: false });
+                    doc.moveDown(0.2);
                 } else {
+                    // Mixed bold + plain inline
                     let started = false;
                     for (const part of parts) {
                         if (!part) continue;
@@ -127,7 +143,10 @@ export async function createGapPdf(analysis: string, companyName: string): Promi
                         }
                         started = true;
                     }
-                    if (started) doc.text('', { continued: false }); // flush
+                    // Reset to plain font before flushing — ensures correct line-height measurement
+                    doc.font('Helvetica').fontSize(10).fillColor('#111111');
+                    if (started) doc.text('', { continued: false }); // flush inline sequence
+                    doc.moveDown(0.25); // guarantee gap before next line
                 }
             }
         }
