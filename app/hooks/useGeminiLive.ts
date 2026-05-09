@@ -293,15 +293,19 @@ export const useGeminiLive = (apiKey: string, context: any, onLog?: (msg: string
                         .replace(/\{\{\s*job_title\s*\}\}/g, jobTitle)
                         .replace(/\{\{\s*target_company\s*\}\}/g, targetCompany);
 
-                    // Gemini 3.1 Live API uses 'config' (not 'setup') with flattened generationConfig fields
+                    // Raw WebSocket BidiGenerateContent protocol always uses 'setup' as the outer key.
+                    // (The 'config' key is only used by the high-level GenAI SDK, not raw WebSocket.)
+                    // generationConfig wrapper is still required in v1beta setup schema.
                     ws.send(JSON.stringify({
-                        config: {
+                        setup: {
                             model: 'models/gemini-3.1-flash-live-preview',
-                            responseModalities: ['AUDIO'],
-                            speechConfig: {
-                                voiceConfig: {
-                                    prebuiltVoiceConfig: {
-                                        voiceName: 'Kore'
+                            generationConfig: {
+                                responseModalities: ['AUDIO'],
+                                speechConfig: {
+                                    voiceConfig: {
+                                        prebuiltVoiceConfig: {
+                                            voiceName: 'Kore'
+                                        }
                                     }
                                 }
                             },

@@ -18,8 +18,8 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
     try {
         if (!apiKey) throw new Error("API Key missing");
         onLog(`Requesting Live TTS for voice: ${voiceName}...`);
-        // gemini-2.5-flash-native-audio-latest uses v1alpha for BidiGenerateContent
-        const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+        // v1beta is required for all 2.5+ native audio models; v1alpha only supported 2.0
+        const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
         const ws = new WebSocket(liveUrl);
         let actx: AudioContext | null = null;
         let nextScheduleTime = 0;
@@ -48,7 +48,7 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
             idleTimeout = setTimeout(() => {
                 onLog('TTS Stream Idle, scheduling playback completion...');
                 scheduleEnd();
-            }, 1000); // Wait 1s without chunks to assume stream done
+            }, 600); // 600ms idle = faster stream-done detection
         };
 
         const cleanup = () => {
@@ -65,7 +65,7 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
             onLog('TTS WS Open. Sending Setup...');
             ws.send(JSON.stringify({
                 setup: {
-                    model: 'models/gemini-2.5-flash-native-audio-latest',
+                    model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
                     generationConfig: {
                         temperature: 0.1,
                         topP: 0.05,
@@ -288,7 +288,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext
                 addLog,
                 cancelTTSRef
             );
-        }, 150);
+        }, 50); // 50ms: fire almost immediately after context is ready
         return () => clearTimeout(timer);
     }, [context, status, isPreTalk, addLog, apiKey]);
 
