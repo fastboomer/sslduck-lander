@@ -150,46 +150,69 @@ export async function createGapPdf(analysis: string, companyName: string): Promi
                 }
 
             } else {
-                // Normal paragraph — handle inline **bold**
-                const parts = line.split(/(\*\*.*?\*\*)/);
-
-                if (parts.length === 1) {
-                    // Check if line contains a URL — render as clickable hyperlink
-                    const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
-                    if (urlMatch) {
-                        const url = urlMatch[1];
-                        const labelText = line.replace(url, '').trim();
-                        if (labelText) {
-                            doc.font('Helvetica').fontSize(10).fillColor('#111111')
-                               .text(labelText + ' ', { continued: true });
-                        }
-                        doc.font('Helvetica').fontSize(10).fillColor('#1a56db')
-                           .text(url, { link: url, underline: true, continued: false });
-                        doc.fillColor('#111111');
-                    } else {
-                        // Pure plain text
-                        doc.font('Helvetica').fontSize(10).fillColor('#111111')
-                           .text(line, { continued: false });
+                // Normal paragraph — tokenize into bold / italic / URL / plain segments
+                // Supports inline: **bold**, *italic*, https://url, plain text
+                // Uses PDFKit continued:true chaining so all segments render on the same line.
+                const tokenRegex = /(\*\*[^*]+?\*\*|\*[^*]+?\*|https?:\/\/[^\s]+)/g;
+                const tokens: { text: string; type: 'bold' | 'italic' | 'url' | 'plain' }[] = [];
+                let lastIndex = 0;
+                let m: RegExpExecArray | null;
+                while ((m = tokenRegex.exec(line)) !== null) {
+                    if (m.index > lastIndex) {
+                        tokens.push({ text: line.slice(lastIndex, m.index), type: 'plain' });
                     }
+                    const raw = m[0];
+                    if (raw.startsWith('**')) {
+                        tokens.push({ text: raw.slice(2, -2), type: 'bold' });
+                    } else if (raw.startsWith('*')) {
+                        tokens.push({ text: raw.slice(1, -1), type: 'italic' });
+                    } else {
+                        tokens.push({ text: raw, type: 'url' });
+                    }
+                    lastIndex = m.index + raw.length;
+                }
+                if (lastIndex < line.length) {
+                    tokens.push({ text: line.slice(lastIndex), type: 'plain' });
+                }
 
-                } else if (
-                    line.startsWith('**') &&
-                    line.endsWith('**') &&
-                    line.split('**').length === 3
-                ) {
-                    // Entirely bold line (interview question headers, etc.)
-                    // Use continued:false — guaranteed Y advance, no overprint
+                if (tokens.length === 0) {
+                    // Nothing to render
+
+                } else if (tokens.length === 1 && tokens[0].type === 'plain') {
+                    // Pure plain text — single call, no overprint risk
+                    doc.font('Helvetica').fontSize(10).fillColor('#111111')
+                       .text(tokens[0].text, { continued: false });
+
+                } else if (tokens.length === 1 && tokens[0].type === 'bold') {
+                    // Entirely bold line (interview question headers)
                     doc.moveDown(0.35);
                     doc.font('Helvetica-Bold').fontSize(10).fillColor('#111111')
-                       .text(line.slice(2, -2), { continued: false });
+                       .text(tokens[0].text, { continued: false });
                     doc.moveDown(0.2);
 
                 } else {
-                    // Mixed bold + plain: strip bold markers to avoid PDFKit
-                    // continued:true wrapping bugs that cause line overprints
-                    const stripped = line.replace(/\*\*(.*?)\*\*/g, '$1');
-                    doc.font('Helvetica').fontSize(10).fillColor('#111111')
-                       .text(stripped, { continued: false });
+                    // Mixed — chain segments with continued:true, terminate last with continued:false
+                    for (let i = 0; i < tokens.length; i++) {
+                        const tok = tokens[i];
+                        const isLast = i === tokens.length - 1;
+                        const opts = { continued: !isLast };
+                        if (tok.type === 'bold') {
+                            doc.font('Helvetica-Bold').fontSize(10).fillColor('#111111')
+                               .text(tok.text, opts);
+                        } else if (tok.type === 'italic') {
+                            doc.font('Helvetica-Oblique').fontSize(10).fillColor('#111111')
+                               .text(tok.text, opts);
+                        } else if (tok.type === 'url') {
+                            doc.font('Helvetica').fontSize(10).fillColor('#1a56db')
+                               .text(tok.text, { ...opts, link: tok.text, underline: true });
+                            if (!isLast) doc.fillColor('#111111');
+                        } else {
+                            doc.font('Helvetica').fontSize(10).fillColor('#111111')
+                               .text(tok.text, opts);
+                        }
+                    }
+                    // Always reset font+color after a chained segment group
+                    doc.font('Helvetica').fillColor('#111111');
                 }
             }
         }
