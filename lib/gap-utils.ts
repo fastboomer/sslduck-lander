@@ -154,9 +154,23 @@ export async function createGapPdf(analysis: string, companyName: string): Promi
                 const parts = line.split(/(\*\*.*?\*\*)/);
 
                 if (parts.length === 1) {
-                    // Pure plain text
-                    doc.font('Helvetica').fontSize(10).fillColor('#111111')
-                       .text(line, { continued: false });
+                    // Check if line contains a URL — render as clickable hyperlink
+                    const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+                    if (urlMatch) {
+                        const url = urlMatch[1];
+                        const labelText = line.replace(url, '').trim();
+                        if (labelText) {
+                            doc.font('Helvetica').fontSize(10).fillColor('#111111')
+                               .text(labelText + ' ', { continued: true });
+                        }
+                        doc.font('Helvetica').fontSize(10).fillColor('#1a56db')
+                           .text(url, { link: url, underline: true, continued: false });
+                        doc.fillColor('#111111');
+                    } else {
+                        // Pure plain text
+                        doc.font('Helvetica').fontSize(10).fillColor('#111111')
+                           .text(line, { continued: false });
+                    }
 
                 } else if (
                     line.startsWith('**') &&

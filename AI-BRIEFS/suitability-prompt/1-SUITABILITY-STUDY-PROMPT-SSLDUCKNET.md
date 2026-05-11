@@ -98,7 +98,9 @@ Dear {{first_name}},
 
 Using the {{job_title}} opportunity offered by {{employer}} as a target, I ran an ATS scan against your most recent resume to see how it would perform. I have written an in-depth analysis of your scoring results for the opportunity. I am providing those results as well as a human recruiter's perspective as to your resume's ability to satisfy the job requirements for the opportunity. I believe you will find some useful insights!
 
-Keep in mind {{first_name}}, this is not a score and evaluation against YOU. Instead, we are analyzing your resume's effectiveness in presenting you to targeted private sector opportunities. Your ATS score was {{ats_score}}. (attached) The "sweet spot" for a typical professional in this position is between 65 and 80, with a pass/fail threshold of 60. Overall, using 80 as a "gold standard" your resume is about a 7 on a scale of 10 for this position.
+Keep in mind {{first_name}}, this is not a score and evaluation against YOU. Instead, we are analyzing your resume's effectiveness in presenting you to targeted private sector opportunities. Your ATS score was {{ats_score}}. (attached) The "sweet spot" for a typical professional in this position is between 65 and 80, with a pass/fail threshold of 60. 
+
+QUESTION: Although your ATS score is no guarantee of an interview, can you see how an ATS score can block (sometimes unfairly) your chances of having a recruiter or hiring manager even look at your resume?  This is also the reason you shouldn’t use the same generic resume for every application, especially if competing applicants are customizing and fine tuning for each application! 
 
 If I were a recruiter reading your resume, I would see that you are talented and have a significant history in very competitive environments. I would view you as highly capable, multifaceted, and performance motivated. There is a "lot to like." Unfortunately, with regard to how ATS would view your resume, there are multiple missed opportunities and considerable deviation from current best practices.
 
@@ -111,6 +113,8 @@ Looking forward to working with you and the development of a mutually beneficial
 Positive thoughts,
 
 Glenn
+
+PS I have a special offer that will allow you to generate custom Resumes, Professional Profiles, Cover Letters, Custom Interview Preparation, and much more for as little as $45, all unlimited use, for 6 mos! Click the link and upgrade your career trajectory in less than 15 minutes! 
 
 Your personalized offer page: {{custom_offer_url}}
 

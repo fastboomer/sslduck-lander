@@ -47,6 +47,7 @@ export async function GET(
         // 'analysis' may still be the gloBrief seed if the full background analysis isn't done yet.
         return NextResponse.json({
             candidateName: data.candidateName || 'Candidate',
+            email: data.email || '',
             resumeText: data.resumeText || '',
             jobDescription: data.jobDescription || '',
             analysis: data.analysis || data.gloBrief || '',

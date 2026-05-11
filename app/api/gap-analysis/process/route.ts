@@ -235,6 +235,8 @@ ${combinedReqText.substring(0, 2000)}`,
             await setDoc(doc(db, 'gap-reports', reportId), {
                 reportId,
                 candidateName,
+                email: extractedEmail || '',
+                customOfferUrl,
                 jobLink: `${targetJobTitle} at ${targetCompany}`,
                 gloBrief,                     // Fast context for Glo voice session
                 analysis: gloBrief,           // Seed full analysis field with brief (updated in BG)
