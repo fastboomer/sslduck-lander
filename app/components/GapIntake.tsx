@@ -167,7 +167,8 @@ export const GapIntake: React.FC<GapIntakeProps> = ({ onSuccess }) => {
                             exit={{ opacity: 0, y: -10 }}
                             value={reqText}
                             onChange={(e) => setReqText(e.target.value)}
-                            className="w-full bg-white border border-royal-blue/10 p-4 rounded-2xl min-h-[250px] outline-none focus:ring-2 focus:ring-royal-blue/20 font-sans text-sm"
+                            className="w-full p-4 rounded-2xl min-h-[250px] outline-none focus:ring-2 focus:ring-royal-blue/20 font-sans text-sm border-2 border-dashed border-royal-blue/40 placeholder:text-royal-blue/50"
+                            style={{ backgroundColor: '#edf2f7' }}
                             placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
                         />
                     </AnimatePresence>
