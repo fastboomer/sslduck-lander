@@ -75,14 +75,14 @@ function GapSuccessContent() {
                                             <div className="h-px w-full bg-royal-blue/10" />
                                         </div>
 
-                                        <p>Hi <span className="font-bold text-royal-blue">{firstName}</span>, we have received your resume and target job. The full GAP analysis is a product of both AI and my personal review.</p>
+                                        <p>Hi <span className="font-bold text-royal-blue">{firstName}</span>, we have received your resume and target job. The full GAP analysis is a product of both AI and my personal review. Watch your email!</p>
 
-                                        <p>On average you should hear from me in 24-48 hours as I limit the number of free offers in any given week. However, it's possible for you to access very valuable <span className="font-bold text-royal-blue underline italic">instant information</span> right now!</p>
+                                        <p>You can also access very valuable <span className="font-bold text-royal-blue underline italic">instant information</span> right now! Just watch your screen!</p>
 
-                                        <p>Click the green button and you can talk with my super smart AI assistant, Glo. As you read this, Glo is already evaluating your professional profile against the job narrative. She's found some key gaps we can exploit.</p>
+                                        <p>Click the &ldquo;Talk to Glo&rdquo; button and you can talk with my super smart AI assistant, Glo. As you read this, Glo is already evaluating your professional profile against the job narrative. She&apos;s looking for any key gaps you can exploit!</p>
 
                                         <div className="pt-4">
-                                            <p className="font-serif font-bold text-royal-blue text-lg italic">Positive thoughts, Glenn</p>
+                                            <p className="font-serif font-bold text-royal-blue text-lg italic">Positive thoughts,<br />Glenn</p>
                                         </div>
                                     </div>
                                 </div>
@@ -142,7 +142,10 @@ function GapSuccessContent() {
                                     </div>
                                 </div>
                                 <div className="shrink-0">
-                                    <button className="bg-white text-royal-blue px-12 py-5 rounded-full font-bold text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl">Book My Rewrite</button>
+                                    <a
+                                        href={reportId ? `/gap-analysis/offer?reportId=${reportId}` : '/gap-analysis/offer'}
+                                        className="bg-white text-royal-blue px-12 py-5 rounded-full font-bold text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl inline-block text-center"
+                                    >Book My Rewrite</a>
                                 </div>
                             </div>
                         </div>
