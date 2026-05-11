@@ -18,8 +18,8 @@ function OfferPageContent() {
 
     useEffect(() => {
         if (!reportId) {
+            // No ID: still show the offer page with a generic greeting
             setIsLoading(false);
-            setError('No report ID provided.');
             return;
         }
 

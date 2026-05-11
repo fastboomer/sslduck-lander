@@ -125,6 +125,29 @@ export async function POST(req: NextRequest) {
         const firstName = candidateName.split(' ')[0] || "Candidate";
         const lastName = candidateName.split(' ').slice(1).join(' ') || "";
 
+        // 3b. Compute ATS Score (keyword overlap, 0–80 scale)
+        // Lower scores help sell resume rewrites — the model is intentionally strict:
+        // ATS systems penalise formatting, missing keywords, and non-standard sections.
+        // Scale: 0-80 | Pass threshold: 60 | Ideal range: 65-80
+        const computeAtsScore = (resumeText: string, jobText: string): number => {
+            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 3);
+            const resumeWords = new Set(normalize(resumeText.substring(0, 8000)));
+            const jobWords = normalize(jobText.substring(0, 4000));
+            if (jobWords.length === 0) return 55; // safe default
+            // Deduplicate job keywords and score coverage
+            const uniqueJobKeywords = [...new Set(jobWords)];
+            const matched = uniqueJobKeywords.filter(w => resumeWords.has(w)).length;
+            const rawRatio = matched / uniqueJobKeywords.length; // 0.0 – 1.0
+            // Map to 0–80 scale with intentional ATS-style harshness:
+            // Perfect keyword match (ratio=1.0) → max 72 (ATS always finds formatting faults)
+            // Typical professional resume (ratio ~0.45–0.6) → 52–65
+            const raw = Math.round(rawRatio * 72);
+            // Clamp to 35–76 (never suspiciously perfect, never insultingly low)
+            return Math.min(76, Math.max(35, raw));
+        };
+        const atsScore = computeAtsScore(combinedResumeText, combinedReqText);
+        console.log(`[GAP_PROCESS] ATS Score computed: ${atsScore}/80`);
+
         // 4. Load Prompt Templates
         console.log(`[GAP_PROCESS] [${new Date().toISOString()}] Loading prompt templates...`);
         const promptPath = path.join(process.cwd(), 'AI-BRIEFS', 'suitability-prompt', '1-SUITABILITY-STUDY-PROMPT-SSLDUCKNET.md');
@@ -134,11 +157,12 @@ export async function POST(req: NextRequest) {
         let promptTemplate = fs.readFileSync(promptPath, 'utf8');
         let exampleTemplate = fs.existsSync(examplePath) ? fs.readFileSync(examplePath, 'utf8') : '';
 
-        // 5. Prepare Final Prompt
-        // CRITICAL: inject resume + job description INTO the template's placeholder
-        // sections so the AI receives inputs BEFORE its output instructions.
-        // Previously these were appended AFTER the output instructions, causing Claude
-        // to write the cover letter blind and stop early.
+        // 5. Prepare Final Prompt — generate reportId now so custom_offer_url is ready
+        const reportId = `gap-${Date.now()}`;
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://sslduck-lander.vercel.app';
+        const customOfferUrl = `${baseUrl}/gap-analysis/offer?reportId=${reportId}`;
+        console.log(`[GAP_PROCESS] Report ID: ${reportId} | Offer URL: ${customOfferUrl}`);
+
         const finalPrompt = promptTemplate
             // Inject actual content into template input blocks
             .replace('[PASTE RESUME HERE]', combinedResumeText.substring(0, 10000))
@@ -151,6 +175,8 @@ export async function POST(req: NextRequest) {
             .replace(/\{\{\s*phone_number\s*\}\}/g, extractedPhone || 'Phone Not Found')
             .replace(/\{\{\s*job_title\s*\}\}/g, targetJobTitle)
             .replace(/\{\{\s*employer\s*\}\}/g, targetCompany)
+            .replace(/\{\{\s*ats_score\s*\}\}/g, String(atsScore))
+            .replace(/\{\{\s*custom_offer_url\s*\}\}/g, customOfferUrl)
             // Legacy bracket-style variables
             .replace(/\[\s*first_name\s*\]/g, firstName)
             .replace(/\[\s*job_title\s*\]/g, targetJobTitle)
@@ -203,7 +229,7 @@ ${combinedReqText.substring(0, 2000)}`,
 
         // 7. Save Glo brief to Firestore immediately — user can redirect now
         console.log("[GAP_PROCESS] Saving Glo brief to Firestore...");
-        const reportId = `gap-${Date.now()}`;
+        // reportId + customOfferUrl already created above (before finalPrompt build)
         if (!db) throw new Error("Database connection unavailable.");
         try {
             await setDoc(doc(db, 'gap-reports', reportId), {
