@@ -177,8 +177,8 @@ export const ResumeOfferCard: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Job Description Box - Pure White Background */}
-                        <div className="space-y-3 bg-white border border-royal-blue/10 p-6 rounded-2xl shadow-sm">
+                        {/* Job Description Box - Matching dashed border style */}
+                        <div className="space-y-3 border-2 border-dashed border-royal-blue/30 p-6 rounded-2xl" style={{ backgroundColor: '#f0f7ff' }}>
                             <label className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-royal-blue">
                                 <FileText className="w-4 h-4" />
                                 Copy/Paste Target Job Description
@@ -188,7 +188,7 @@ export const ResumeOfferCard: React.FC = () => {
                                 value={jobDescription}
                                 onChange={(e) => setJobDescription(e.target.value)}
                                 placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
-                                className="w-full bg-[#fcfcfc] border border-royal-blue/10 rounded-xl p-4 focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue outline-none transition-all placeholder:text-royal-blue/30 text-sm"
+                                className="w-full bg-white border border-royal-blue/10 rounded-xl p-4 focus:ring-2 focus:ring-royal-blue/20 focus:border-royal-blue outline-none transition-all placeholder:text-royal-blue/55 text-sm"
                             />
                         </div>
 
