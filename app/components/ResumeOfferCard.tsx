@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Upload, FileText, Send, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { SixMistakesVideo } from './SixMistakesVideo';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -330,6 +331,10 @@ export const ResumeOfferCard: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* ── Six Resume Mistakes Video Card ─────────────────── */}
+            <SixMistakesVideo />
+
         </div>
     );
 };
