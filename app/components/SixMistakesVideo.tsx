@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURATION — Update VIDEO_URL after uploading to Firebase Storage
@@ -11,17 +11,7 @@ const THUMBNAIL_URL = '/six-mistakes-thumbnail.png.png';
 
 export const SixMistakesVideo: React.FC = () => {
     const [isPlaying, setIsPlaying] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
-
-    useEffect(() => {
-        const checkDevice = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        checkDevice();
-        window.addEventListener('resize', checkDevice);
-        return () => window.removeEventListener('resize', checkDevice);
-    }, []);
 
     const handlePlay = () => {
         setIsPlaying(true);
@@ -65,7 +55,7 @@ export const SixMistakesVideo: React.FC = () => {
                 {/* Responsive video container */}
                 <div
                     className="relative w-full rounded-2xl overflow-hidden shadow-2xl cursor-pointer"
-                    style={{ aspectRatio: isMobile ? '9/16' : '16/9', background: '#000' }}
+                    style={{ aspectRatio: '16/9', background: '#000' }}
                     onClick={!isPlaying ? handlePlay : undefined}
                 >
                     {!isPlaying ? (
