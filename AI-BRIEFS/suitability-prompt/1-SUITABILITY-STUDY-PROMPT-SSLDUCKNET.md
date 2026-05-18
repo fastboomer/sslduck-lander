@@ -110,9 +110,11 @@ I believe you will find the following report to be packed with useful informatio
 
 Looking forward to working with you and the development of a mutually beneficial relationship!
 
+
 Positive thoughts,
 
 Glenn
+
 
 PS I have a special offer that will allow you to generate custom Resumes, Professional Profiles, Cover Letters, Custom Interview Preparation, and much more for as little as $45, all unlimited use, for 6 mos! Click the link and upgrade your career trajectory in less than 15 minutes! 
 
