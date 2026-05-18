@@ -15,10 +15,8 @@ export const SixMistakesVideo: React.FC = () => {
 
     const handlePlay = () => {
         setIsPlaying(true);
-        // Small delay so the video element renders before we call play()
-        setTimeout(() => {
-            videoRef.current?.play().catch(() => {});
-        }, 50);
+        // Video is already in DOM and pre-buffered — play immediately
+        videoRef.current?.play().catch(() => {});
     };
 
     return (
@@ -58,8 +56,22 @@ export const SixMistakesVideo: React.FC = () => {
                     style={{ aspectRatio: '16/9', background: '#000' }}
                     onClick={!isPlaying ? handlePlay : undefined}
                 >
-                    {!isPlaying ? (
-                        /* ── Thumbnail + play button overlay ── */
+                    {/* ── Video is always in the DOM so the browser pre-buffers it ── */}
+                    <video
+                        ref={videoRef}
+                        controls={isPlaying}
+                        playsInline
+                        preload="auto"
+                        className="w-full h-full object-cover"
+                        src={VIDEO_URL}
+                        poster={THUMBNAIL_URL}
+                        style={{ display: isPlaying ? 'block' : 'none' }}
+                    >
+                        Your browser does not support the video tag.
+                    </video>
+
+                    {/* ── Thumbnail + play button overlay (shown until clicked) ── */}
+                    {!isPlaying && (
                         <>
                             <img
                                 src={THUMBNAIL_URL}
@@ -97,19 +109,6 @@ export const SixMistakesVideo: React.FC = () => {
                                 </div>
                             </div>
                         </>
-                    ) : (
-                        /* ── Active video player ── */
-                        <video
-                            ref={videoRef}
-                            controls
-                            playsInline
-                            preload="metadata"
-                            className="w-full h-full object-cover"
-                            src={VIDEO_URL}
-                            poster={THUMBNAIL_URL}
-                        >
-                            Your browser does not support the video tag.
-                        </video>
                     )}
                 </div>
 
