@@ -37,7 +37,7 @@ export const SixMistakesVideo: React.FC = () => {
                     letterSpacing: '-0.02em',
                     marginBottom: '8px',
                 }}>
-                    Must-Watch Before You Apply!
+                    Must-Watch Before Sending Your Resume!
                 </h2>
 
                 <p style={{
