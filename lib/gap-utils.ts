@@ -74,6 +74,7 @@ export async function createGapPdf(analysis: string, companyName: string): Promi
         const lines = analysis.split('\n');
         let firstH2Seen = false;      // triggers page break after cover letter
         let skipChecklist = false;    // suppresses Best Practices Checklist section
+        let consecutiveBlanks = 0;   // tracks runs of empty lines for spacing
 
         for (const rawLine of lines) {
             const line = rawLine.trimEnd();
@@ -92,6 +93,8 @@ export async function createGapPdf(analysis: string, companyName: string): Promi
                     continue;
                 }
             }
+
+            consecutiveBlanks = 0; // reset on every non-blank line
 
             if (line.startsWith('# ')) {
                 doc.moveDown(0.8)
@@ -136,7 +139,9 @@ export async function createGapPdf(analysis: string, companyName: string): Promi
                 doc.moveDown(0.4);
 
             } else if (line.trim() === '') {
-                doc.moveDown(0.35);
+                consecutiveBlanks++;
+                doc.moveDown(0.35); // each blank line adds 0.35; consecutive blanks stack
+                continue;           // skip the reset below — next non-blank will reset
 
             } else if (line.startsWith('| ')) {
                 // Markdown table row — render as plain indented text
