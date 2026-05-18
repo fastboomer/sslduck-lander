@@ -400,8 +400,6 @@ function FulfillmentDashboard() {
         }
         .bd-launch-btn:disabled {
           cursor: not-allowed;
-          transform: none;
-          opacity: 0.55;
         }
         .bd-launch-btn-full { width: 100%; }
 
