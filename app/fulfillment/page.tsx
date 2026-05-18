@@ -399,12 +399,9 @@ function FulfillmentDashboard() {
           transform: translateY(-1px);
         }
         .bd-launch-btn:disabled {
-          background: #9ca3af;
-          border-color: #6b7280;
-          box-shadow: none;
           cursor: not-allowed;
           transform: none;
-          opacity: 0.6;
+          opacity: 0.55;
         }
         .bd-launch-btn-full { width: 100%; }
 
