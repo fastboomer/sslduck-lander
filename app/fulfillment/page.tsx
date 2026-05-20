@@ -20,7 +20,7 @@ const tools = [
     description: 'Generate resume with Professional profile plus 2 additional profile variations.',
     icon: '📄',
     featured: true,  // spans 2 columns on md+
-    href: '/gap-analysis',
+    href: '/fulfillment/resume-360',
     cta: 'Launch Tool',
   },
   {
@@ -101,8 +101,12 @@ function FulfillmentDashboard() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) return;
       setUser(u);
-      const snap = await getDoc(doc(db, 'user_access', u.uid));
-      if (snap.exists()) setAccess(snap.data() as AccessInfo);
+      try {
+        const snap = await getDoc(doc(db, 'user_access', u.uid));
+        if (snap.exists()) setAccess(snap.data() as AccessInfo);
+      } catch {
+        // WithAuth already enforces access; this read is display-only.
+      }
     });
     return () => unsub();
   }, []);

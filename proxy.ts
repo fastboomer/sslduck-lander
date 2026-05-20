@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * SSLDUCK Fulfillment Middleware — The Gatekeeper
+ * SSLDUCK Fulfillment Proxy — The Gatekeeper
  *
  * Runs before every /fulfillment/* request.
  * Checks for a valid session cookie. If missing → redirect to /login.
  * Full auth verification (including Firestore expiry) happens in WithAuth.tsx
  */
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Check for a session cookie set by /api/auth/session
