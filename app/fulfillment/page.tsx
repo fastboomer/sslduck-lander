@@ -28,7 +28,7 @@ const tools = [
     title: 'Cover Letter Generator',
     description: 'Custom cover letter plus 2 additional variations.',
     icon: '✉️',
-    href: null,
+    href: '/fulfillment/cover-letter',
     cta: 'Launch',
     comingSoon: false,
   },
