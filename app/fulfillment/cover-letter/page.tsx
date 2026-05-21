@@ -252,11 +252,35 @@ export default function CoverLetterPage() {
           z-index: 20;
         }
         .cl-nav-logo {
-          font-size: 20px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .cl-nav-logo-img {
+          height: 40px;
+          width: auto;
+        }
+        .cl-nav-logo-text {
+          display: flex;
+          flex-direction: column;
+        }
+        .cl-nav-logo-name {
+          font-size: 17px;
           font-weight: 900;
           color: #002366;
           letter-spacing: -0.5px;
-          cursor: pointer;
+          line-height: 1;
+          font-family: Georgia, serif;
+        }
+        .cl-nav-logo-tagline {
+          font-size: 8px;
+          font-weight: 700;
+          color: rgba(0,35,102,0.4);
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          margin-top: 2px;
         }
         .cl-nav-back {
           background: none;
@@ -540,9 +564,13 @@ export default function CoverLetterPage() {
 
         {/* ── Nav ─────────────────────────────────────────────────────── */}
         <nav className="cl-nav">
-          <span className="cl-nav-logo" onClick={() => router.push('/fulfillment')}>
-            SSLDUCK
-          </span>
+          <a href="https://sslduck-lander.vercel.app" className="cl-nav-logo">
+            <img src="/logo.png" alt="SSLDuck Logo" className="cl-nav-logo-img" />
+            <div className="cl-nav-logo-text">
+              <span className="cl-nav-logo-name">SSLDUCK</span>
+              <span className="cl-nav-logo-tagline">VERSION 12-PRO</span>
+            </div>
+          </a>
           <button className="cl-nav-back" onClick={() => router.push('/fulfillment')}>
             ← Back to Suite
           </button>

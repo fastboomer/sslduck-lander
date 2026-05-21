@@ -189,11 +189,35 @@ function FulfillmentDashboard() {
           top: 0;
           z-index: 20;
         }
-        .bd-logo {
-          font-size: 20px;
+        .bd-logo-link {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+        }
+        .bd-logo-img {
+          height: 44px;
+          width: auto;
+        }
+        .bd-logo-text {
+          display: flex;
+          flex-direction: column;
+        }
+        .bd-logo-name {
+          font-size: 18px;
           font-weight: 900;
           color: #002366;
           letter-spacing: -0.5px;
+          line-height: 1;
+          font-family: Georgia, serif;
+        }
+        .bd-logo-tagline {
+          font-size: 8px;
+          font-weight: 700;
+          color: rgba(0,35,102,0.4);
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          margin-top: 2px;
         }
         .bd-nav-right {
           display: flex;
@@ -534,7 +558,13 @@ function FulfillmentDashboard() {
 
         {/* ── Nav ──────────────────────────────────────────────────────── */}
         <nav className="bd-nav">
-          <span className="bd-logo">SSLDUCK</span>
+          <a href="https://sslduck-lander.vercel.app" className="bd-logo-link">
+            <img src="/logo.png" alt="SSLDuck Logo" className="bd-logo-img" />
+            <div className="bd-logo-text">
+              <span className="bd-logo-name">SSLDUCK</span>
+              <span className="bd-logo-tagline">VERSION 12-PRO</span>
+            </div>
+          </a>
           <div className="bd-nav-right">
             <span className="bd-email">{user?.email}</span>
             <button onClick={handleLogout} className="bd-signout" id="dash-logout-btn">

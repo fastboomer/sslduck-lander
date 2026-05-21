@@ -278,11 +278,35 @@ export default function Resume360Page() {
           z-index: 20;
         }
         .r3-nav-logo {
-          font-size: 20px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .r3-nav-logo-img {
+          height: 40px;
+          width: auto;
+        }
+        .r3-nav-logo-text {
+          display: flex;
+          flex-direction: column;
+        }
+        .r3-nav-logo-name {
+          font-size: 17px;
           font-weight: 900;
           color: #002366;
           letter-spacing: -0.5px;
-          cursor: pointer;
+          line-height: 1;
+          font-family: Georgia, serif;
+        }
+        .r3-nav-logo-tagline {
+          font-size: 8px;
+          font-weight: 700;
+          color: rgba(0,35,102,0.4);
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          margin-top: 2px;
         }
         .r3-nav-back {
           background: none;
@@ -653,9 +677,13 @@ export default function Resume360Page() {
 
         {/* ── Nav ─────────────────────────────────────────────────────── */}
         <nav className="r3-nav">
-          <span className="r3-nav-logo" onClick={() => router.push('/fulfillment')}>
-            SSLDUCK
-          </span>
+          <a href="https://sslduck-lander.vercel.app" className="r3-nav-logo">
+            <img src="/logo.png" alt="SSLDuck Logo" className="r3-nav-logo-img" />
+            <div className="r3-nav-logo-text">
+              <span className="r3-nav-logo-name">SSLDUCK</span>
+              <span className="r3-nav-logo-tagline">VERSION 12-PRO</span>
+            </div>
+          </a>
           <button className="r3-nav-back" onClick={() => router.push('/fulfillment')}>
             ← Back to Suite
           </button>
