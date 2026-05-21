@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Volume2, VolumeX, Play } from 'lucide-react';
+import { Volume2, VolumeX, Play, RotateCcw, RotateCw } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURATION — Update VIDEO_URL after uploading to Firebase Storage
@@ -44,6 +44,20 @@ export const SixMistakesVideo: React.FC = () => {
             const newMuted = !videoRef.current.muted;
             videoRef.current.muted = newMuted;
             setIsMuted(newMuted);
+        }
+    };
+
+    const skipBack = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (videoRef.current) {
+            videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+        }
+    };
+
+    const skipForward = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (videoRef.current) {
+            videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10);
         }
     };
 
@@ -148,15 +162,39 @@ export const SixMistakesVideo: React.FC = () => {
                         </div>
                     )}
 
-                    {/* ── Custom Floating Mute/Unmute Speaker Icon ── */}
+                    {/* ── Custom Floating Control Bar ── */}
                     {hasStarted && (
-                        <button
-                            onClick={toggleMute}
-                            className="absolute bottom-4 right-4 bg-black/60 hover:bg-black/85 backdrop-blur-md text-white p-2.5 rounded-full transition-all duration-300 z-10 shadow-lg border border-white/10 hover:scale-110 active:scale-95 flex items-center justify-center"
-                            title={isMuted ? "Unmute" : "Mute"}
+                        <div 
+                            className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full z-10 shadow-lg border border-white/10"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                        </button>
+                            {/* Skip Back 10s */}
+                            <button
+                                onClick={skipBack}
+                                className="text-white/80 hover:text-white p-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-90 flex items-center justify-center"
+                                title="Back 10 seconds"
+                            >
+                                <RotateCcw className="w-4.5 h-4.5" />
+                            </button>
+
+                            {/* Sound Mute/Unmute */}
+                            <button
+                                onClick={toggleMute}
+                                className="text-white hover:text-white/90 p-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-90 flex items-center justify-center border-x border-white/10 px-2.5"
+                                title={isMuted ? "Unmute" : "Mute"}
+                            >
+                                {isMuted ? <VolumeX className="w-4.5 h-4.5" /> : <Volume2 className="w-4.5 h-4.5" />}
+                            </button>
+
+                            {/* Skip Forward 10s */}
+                            <button
+                                onClick={skipForward}
+                                className="text-white/80 hover:text-white p-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-90 flex items-center justify-center"
+                                title="Forward 10 seconds"
+                            >
+                                <RotateCw className="w-4.5 h-4.5" />
+                            </button>
+                        </div>
                     )}
                 </div>
 
