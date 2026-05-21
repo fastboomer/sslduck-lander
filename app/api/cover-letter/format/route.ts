@@ -104,10 +104,10 @@ function buildDoc(rawText: string): Document {
       properties: {
         page: {
           margin: {
-            top:    convertInchesToTwip(1),
-            bottom: convertInchesToTwip(1),
-            left:   convertInchesToTwip(1.25),
-            right:  convertInchesToTwip(1.25),
+            top:    convertInchesToTwip(0.75),
+            bottom: convertInchesToTwip(0.75),
+            left:   convertInchesToTwip(0.75),
+            right:  convertInchesToTwip(0.75),
           },
         },
       },
