@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { Volume2, VolumeX, Play } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURATION — Update VIDEO_URL after uploading to Firebase Storage
@@ -10,13 +11,40 @@ const VIDEO_URL = 'https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026
 const THUMBNAIL_URL = '/six-mistakes-thumbnail.png.png';
 
 export const SixMistakesVideo: React.FC = () => {
+    const [hasStarted, setHasStarted] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     const handlePlay = () => {
+        setHasStarted(true);
         setIsPlaying(true);
-        // Video is already in DOM and pre-buffered — play immediately
-        videoRef.current?.play().catch(() => {});
+        if (videoRef.current) {
+            videoRef.current.muted = isMuted;
+            videoRef.current.play().catch(() => {});
+        }
+    };
+
+    const togglePlayPause = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (videoRef.current) {
+            if (isPlaying) {
+                videoRef.current.pause();
+                setIsPlaying(false);
+            } else {
+                videoRef.current.play().catch(() => {});
+                setIsPlaying(true);
+            }
+        }
+    };
+
+    const toggleMute = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (videoRef.current) {
+            const newMuted = !videoRef.current.muted;
+            videoRef.current.muted = newMuted;
+            setIsMuted(newMuted);
+        }
     };
 
     return (
@@ -52,26 +80,26 @@ export const SixMistakesVideo: React.FC = () => {
 
                 {/* Responsive video container */}
                 <div
-                    className="relative w-full rounded-2xl overflow-hidden shadow-2xl cursor-pointer"
+                    className="relative w-full rounded-2xl overflow-hidden shadow-2xl cursor-pointer group"
                     style={{ aspectRatio: '16/9', background: '#000' }}
-                    onClick={!isPlaying ? handlePlay : undefined}
+                    onClick={!hasStarted ? handlePlay : togglePlayPause}
                 >
                     {/* ── Video is always in the DOM so the browser pre-buffers it ── */}
                     <video
                         ref={videoRef}
-                        controls={isPlaying}
+                        controls={false}
                         playsInline
                         preload="auto"
                         className="w-full h-full object-cover"
                         src={VIDEO_URL}
                         poster={THUMBNAIL_URL}
-                        style={{ display: isPlaying ? 'block' : 'none' }}
+                        style={{ display: hasStarted ? 'block' : 'none' }}
                     >
                         Your browser does not support the video tag.
                     </video>
 
                     {/* ── Thumbnail + play button overlay (shown until clicked) ── */}
-                    {!isPlaying && (
+                    {!hasStarted && (
                         <>
                             <img
                                 src={THUMBNAIL_URL}
@@ -109,6 +137,26 @@ export const SixMistakesVideo: React.FC = () => {
                                 </div>
                             </div>
                         </>
+                    )}
+
+                    {/* ── Centered Play icon overlay when paused during playback ── */}
+                    {hasStarted && !isPlaying && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity duration-300">
+                            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-xl animate-pulse">
+                                <Play className="w-8 h-8 text-white fill-white ml-1" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Custom Floating Mute/Unmute Speaker Icon ── */}
+                    {hasStarted && (
+                        <button
+                            onClick={toggleMute}
+                            className="absolute bottom-4 right-4 bg-black/60 hover:bg-black/85 backdrop-blur-md text-white p-2.5 rounded-full transition-all duration-300 z-10 shadow-lg border border-white/10 hover:scale-110 active:scale-95 flex items-center justify-center"
+                            title={isMuted ? "Unmute" : "Mute"}
+                        >
+                            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                        </button>
                     )}
                 </div>
 
