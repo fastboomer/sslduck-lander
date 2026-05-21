@@ -69,7 +69,8 @@ None. Job Requirements contain no special instructions
 
 Output:
 Please generate three distinct cover letter versions, each with a unique and attention-grabbing opening paragraph, followed by the "SPECIAL INSTRUCTIONS" page. 
-#IMPORTANT: Each cover letter is one page and must start on a new page. 
+#IMPORTANT: Each cover letter must start on a new page. Between each cover letter, and before the Special Instructions Warning page, output a line containing only the text: [PAGE BREAK]
+#IMPORTANT: Do not put any blank lines between individual address lines in the return address or inside address. Each address element goes on its own line with no blank lines in between.
 Please proceed`;
 
 // ── File reading helpers ──────────────────────────────────────────────────────
