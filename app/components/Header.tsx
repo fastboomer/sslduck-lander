@@ -50,7 +50,7 @@ export default function Header() {
         { name: 'Home', href: '/' },
         { name: 'Articles', href: '/articles' },
         { name: 'Resume Audit', href: '/#audit' },
-        { name: 'Career Prep', href: '#' },
+        { name: 'Login', href: '/login' },
     ];
 
     const isArticlesPage = pathname?.includes('articles');
