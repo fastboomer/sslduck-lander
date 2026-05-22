@@ -199,9 +199,17 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
     const line = lines[i].trim();
     if (!line) { i++; continue; }
 
+    // Proactively skip page breaks from experience blocks
+    if (/page[\s_-]*break/i.test(line)) {
+      i++;
+      continue;
+    }
+
     if (isBullet(line)) {
       if (blocks.length > 0) {
-        blocks[blocks.length - 1].bullets.push(line);
+        if (!/page[\s_-]*break/i.test(line)) {
+          blocks[blocks.length - 1].bullets.push(line);
+        }
       }
       i++;
       continue;
@@ -216,6 +224,9 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
     while (i < lines.length) {
       const next = lines[i].trim();
       if (!next) { i++; continue; }
+      if (/page[\s_-]*break/i.test(next)) {
+        break;
+      }
       if (isBullet(next)) break;
 
       if (hasDate(next)) {
@@ -237,6 +248,12 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
     while (i < lines.length) {
       const bl = lines[i].trim();
       if (!bl) { i++; continue; }
+      
+      if (/page[\s_-]*break/i.test(bl)) {
+        i++;
+        break; // Stop parsing bullets/experience on a page break
+      }
+
       if (isBullet(bl)) {
         bullets.push(bl);
         i++;
