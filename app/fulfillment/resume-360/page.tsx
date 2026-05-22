@@ -85,7 +85,13 @@ School in 11 pt, bold, Arial, left justified, next line major area of study, 11 
 Additional formatting rules: Always list EDUCATION as last section, resume must not exceed 2 pages, if additional room is needed, here are some options: (1) change the SKILLS entries in the skills paragraph to 10 pt, however always leave headers ie “SKILLS” 11pt, bold, Arial, centered; (2) if yet more space needed, change entire resume to 10 pt Arial, while leaving headers at 11 pt centered (3) if more space needed change top margin and bottom margins to .5; (4) if more space needed change side margins to .75; (5) if more space needed remove jobs older than 7 yrs with a note additional work history available on request. 
 NOTE: Resume holders name always 14 pt bold Arial, PROFESSIONAL PROFILE always 14 pt bold Arial, centered.
 After completing the resume, start a 3rd page for the additional Professional Profile variations. Title, centered, 11 pt, bold Arial: “Additional Professional Profile Variations”
-Final note are your comments regarding why the three skills selected for highlighting the resume holder’s skills were chosen and why they match up with the target jobs requirements. Title, centered, 11pt, bold Arial: Final Notes / Rationale
+Final Notes: Write a warm, personal note DIRECTLY to the resume client — speak to them as "you", not about them. Structure it exactly as follows:
+Line 1: "Hi [resume client's first name]!"
+Body (3-5 sentences): Explain which three traits you selected and WHY each one aligns with this specific job's top requirements — address the client directly (e.g. "I chose Strategic SaaS Sales as your lead trait because the role calls for..."). Include 1-2 sentences of specific, positive observations about their background and how well it positions them for this role. Close the body with an encouraging, upbeat statement about their prospects.
+Signature (on its own lines, exactly as written):
+Wishing you all the best,
+Glo
+Title for this section: centered, 11pt bold Arial: Final Notes / Rationale
 Ensure all content is drawn exclusively from Inputs 1 and 2, tailored to Input-3 requirements.
 [FINAL OUTPUT]
 New Resume: A fully formatted resume with the primary Professional Profile, adhering to all rules and best practices.

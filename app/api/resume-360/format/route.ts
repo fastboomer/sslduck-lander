@@ -711,14 +711,20 @@ function buildDoc(p: Parsed): Document {
         paras.push(blank());
       }
     }
-    // Page 3: Final Notes / Rationale
+    // Page 3: Final Notes / Rationale (personal note from Glo to client)
     if (p.finalNotesRaw.length > 0) {
       paras.push(pageBreakP());
       paras.push(centeredBoldP('Final Notes / Rationale', currentS14));
       paras.push(blank());
       for (const line of p.finalNotesRaw) {
-        paras.push(leftP(line, currentS11));
-        paras.push(blank());
+        const isSignature =
+          line.trim() === 'Wishing you all the best,' ||
+          line.trim() === 'Glo';
+        paras.push(leftP(line, currentS11, false, isSignature));
+        // No blank line after the name "Glo" — keep signature tight
+        if (!isSignature || line.trim() === 'Wishing you all the best,') {
+          paras.push(blank());
+        }
       }
     }
   }
