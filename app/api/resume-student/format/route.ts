@@ -19,6 +19,40 @@ const KNOWN_HEADERS = new Set([
 ]);
 
 // ── Pre-processor: cleans ChatGPT/other LLM quirks ──────────────────────────
+function cleanMarkdown(line: string): string {
+  let t = line.trim();
+  // 1. Remove markdown code block fences (e.g. ```markdown or ```)
+  if (/^```[a-zA-Z0-9]*\s*$/.test(t)) {
+    return '';
+  }
+  
+  // 2. Strip leading hashes (e.g. ## SKILLS -> SKILLS)
+  t = t.replace(/^#+\s+/, '');
+  
+  // 3. Strip bold markers (**bold** -> bold, __bold__ -> bold)
+  t = t.replace(/\*\*|__/g, '');
+  
+  // 4. Strip italic markers (*italic* -> italic, _italic_ -> italic) without affecting bullets (* bullet)
+  t = t.replace(/\*(?!\s)([^*]+)\*/g, '$1');
+  t = t.replace(/_(?!\s)([^_]+)_/g, '$1');
+  
+  // 5. Clean up any leftover single trailing/leading formatting chars if they are quirks
+  if (t.startsWith('*') && !t.startsWith('* ')) {
+    t = t.slice(1);
+  }
+  if (t.endsWith('*') && !t.endsWith(' *')) {
+    t = t.slice(0, -1);
+  }
+  if (t.startsWith('_') && !t.startsWith('_ ')) {
+    t = t.slice(1);
+  }
+  if (t.endsWith('_') && !t.endsWith(' _')) {
+    t = t.slice(0, -1);
+  }
+  
+  return t.trim();
+}
+
 function preprocessLLMOutput(raw: string): string {
   // 1. Replace block HTML elements with newlines, strip remaining tags
   let text = raw
@@ -31,17 +65,18 @@ function preprocessLLMOutput(raw: string): string {
   const expanded: string[] = [];
 
   for (const line of rawLines) {
-    const t = line.trim();
-    if (!t) continue;
+    const cleaned = cleanMarkdown(line);
+    if (!cleaned) continue;
 
-    const parts = t.split(/\s*\|\s*/);
+    const parts = cleaned.split(/\s*\|\s*/);
     const hasLong = parts.some(p => p.trim().length > 50);
     const hasKnown = parts.some(p => KNOWN_HEADERS.has(p.trim().toUpperCase()));
 
     if ((hasLong || hasKnown) && parts.length > 1) {
       // Collapsed blob — expand
       for (const p of parts) {
-        const s = p.replace(/\t+/g, ' | ').trim();
+        const cleanedPart = cleanMarkdown(p);
+        const s = cleanedPart.replace(/\t+/g, ' | ').trim();
         if (!s) continue;
         if (KNOWN_HEADERS.has(s.toUpperCase())) {
           expanded.push(s.toUpperCase() === 'WORK EXPERIENCE' ? 'PROFESSIONAL EXPERIENCE' : s.toUpperCase());
@@ -53,7 +88,7 @@ function preprocessLLMOutput(raw: string): string {
       }
     } else {
       // Normalize tabs → pipe for skills lines
-      expanded.push(t.replace(/\t+/g, ' | '));
+      expanded.push(cleaned.replace(/\t+/g, ' | '));
     }
   }
 
@@ -92,7 +127,7 @@ const contactP = (t: string) => new Paragraph({ alignment: AlignmentType.LEFT, s
 const sectionHeader = (t: string) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 240, after: 0 }, children: [new TextRun({ text: t, bold: true, size: S14, font: FONT })] });
 const centeredBoldP = (t: string, size = S11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size, font: FONT })] });
 const centeredP = (t: string, size = S11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, font: FONT })] });
-const leftP = (t: string, size = S11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, bold, italic, font: FONT })] });
+const leftP = (t: string, size = S11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, bold, italics: italic, font: FONT })] });
 
 const companyP = (company: string, location: string) => new Paragraph({
   alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 },
@@ -106,7 +141,7 @@ const jobTitleP = (title: string, dates: string, size = S11) => new Paragraph({
   tabStops: [{ type: TabStopType.RIGHT, position: RIGHT_TAB }],
   spacing: { ...SS, before: 0, after: 0 },
   children: [
-    new TextRun({ text: title, italic: true, size, font: FONT }),
+    new TextRun({ text: title, italics: true, size, font: FONT }),
     new TextRun({ text: '\t' + dates, size, font: FONT }),
   ],
 });
@@ -374,7 +409,7 @@ export async function POST(req: NextRequest) {
     const parsed = parseResume(resumeText);
     const doc = buildDoc(parsed);
     const buffer = await Packer.toBuffer(doc);
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
