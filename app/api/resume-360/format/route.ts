@@ -22,7 +22,34 @@ function isConversationalPreamble(line: string): boolean {
   const t = line.trim().toLowerCase();
   if (!t) return false;
   
-  if (/source\s*review/i.test(t) || /^(certainly|sure|absolutely|here is|here's|below is|i have|based on|congratulations|happy to help|here are|sure!)/i.test(t)) {
+  if (
+    /source\s*review/i.test(t) ||
+    /extraction\s*analysis/i.test(t) ||
+    /here\s*is\s*the\s*(output|formatted|resume)/i.test(t) ||
+    /input\s*\d+/i.test(t) ||
+    /analysis\s*of/i.test(t) ||
+    /notes\s*about/i.test(t) ||
+    /comparison\s*of/i.test(t) ||
+    /tailored\s*professional/i.test(t) ||
+    /candidate\s*name/i.test(t) ||
+    /candidate's\s*name/i.test(t) ||
+    /client\s*name/i.test(t) ||
+    /client's\s*name/i.test(t) ||
+    /contact\s*info/i.test(t) ||
+    /contact\s*details/i.test(t) ||
+    /address\s*:/i.test(t) ||
+    /email\s*:/i.test(t) ||
+    /phone\s*:/i.test(t) ||
+    /linkedin\s*:/i.test(t) ||
+    /work\s*history/i.test(t) ||
+    /job\s*accomplishments/i.test(t) ||
+    /hard\s*skills/i.test(t) ||
+    /soft\s*skills/i.test(t) ||
+    /certifications/i.test(t) ||
+    /achievements/i.test(t) ||
+    /education/i.test(t) ||
+    /^(certainly|sure|absolutely|here is|here's|below is|i have|based on|congratulations|happy to help|here are|sure!)/i.test(t)
+  ) {
     return true;
   }
   
@@ -42,6 +69,11 @@ function cleanMarkdown(line: string): string {
   
   // Replace markdown links [Text](URL) with just Text
   t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  
+  // Strip page indicators completely
+  if (/^[-*_\s]*\[?page\s*\d+\]?[-*_\s]*$/i.test(t)) {
+    return '';
+  }
   
   t = t.replace(/^#+\s+/, '');
   t = t.replace(/\*\*|__/g, '');
@@ -292,6 +324,66 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
   return blocks;
 }
 
+function shouldSkipInPage3(t: string, name: string, contactInfo: ContactInfo): boolean {
+  const cleaned = t.trim().replace(/^[\s\-\*—–_:]+/g, '').trim();
+  if (!cleaned) return true;
+  
+  if (isConversationalPreamble(cleaned)) {
+    return true;
+  }
+  
+  const cleanLower = cleaned.toLowerCase();
+  
+  // 1. Skip if it contains email address
+  if (/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(cleanLower)) {
+    return true;
+  }
+  
+  // 2. Skip if it contains phone number (e.g. 10 digits or xxx-xxx-xxxx)
+  if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(cleanLower)) {
+    return true;
+  }
+  
+  // 3. Skip if it contains linkedin.com
+  if (cleanLower.includes('linkedin.com')) {
+    return true;
+  }
+  
+  // 4. Skip candidate name (either exact or as a standalone token)
+  if (name) {
+    const nameLower = name.toLowerCase();
+    if (cleanLower === nameLower || cleanLower.includes(nameLower)) {
+      if (cleanLower.length < nameLower.length + 15) {
+        return true;
+      }
+    }
+    // Also check individual first/last name if the line is very short
+    const nameParts = nameLower.split(/\s+/).filter(p => p.length > 2);
+    if (nameParts.length > 0 && cleanLower.length < 25) {
+      const cleanedTokens = cleanLower.split(/[\s|•\/,·]+/).filter(Boolean);
+      const isAllNameParts = cleanedTokens.every(tok => nameParts.includes(tok));
+      if (isAllNameParts && cleanedTokens.length > 0) {
+        return true;
+      }
+    }
+  }
+  
+  // 5. Skip candidate contact details (exact match or tokens)
+  if (contactInfo) {
+    const { cityState, phone, email, linkedin } = contactInfo;
+    if (cityState && (cleanLower === cityState.toLowerCase() || cleanLower.includes(cityState.toLowerCase()))) {
+      if (cleanLower.length < cityState.length + 10) {
+        return true;
+      }
+    }
+    if (phone && cleanLower.includes(phone.toLowerCase())) return true;
+    if (email && cleanLower.includes(email.toLowerCase())) return true;
+    if (linkedin && cleanLower.includes(linkedin.toLowerCase())) return true;
+  }
+  
+  return false;
+}
+
 function parseResume(raw: string): Parsed {
   const text = preprocessLLMOutput(raw);
   const lines = text.split('\n').map(l => l.trimEnd());
@@ -374,11 +466,27 @@ function parseResume(raw: string): Parsed {
       sec = 'VOLUNTEER';
       continue;
     }
-    if (up.includes('VARIATION') || up.includes('ADDITIONAL PROFILE') || up.includes('ADDITIONAL PROFESSIONAL PROFILE')) {
+    const isVariationHeader = (
+      up === 'ADDITIONAL PROFESSIONAL PROFILE VARIATIONS' ||
+      up === '2 PROFESSIONAL PROFILE VARIATIONS:' ||
+      up === '2 PROFESSIONAL PROFILE VARIATIONS' ||
+      /^(additional\s+)?professional\s+profile\s+variations/i.test(t) ||
+      /^profile\s+variations/i.test(t)
+    ) && t.length < 50;
+
+    if (isVariationHeader) {
       sec = 'VARIATIONS';
       continue;
     }
-    if (sec !== 'NOTES' && (up.includes('FINAL NOTES') || up.includes('RATIONALE') || (up.includes('GLO') && t.length < 40))) {
+
+    const isNotesHeader = (
+      up === 'FINAL NOTES' ||
+      up === 'FINAL NOTES / RATIONALE' ||
+      /^(final\s+)?notes\s*\/?\s*rationale/i.test(t) ||
+      /^rationale/i.test(t)
+    ) && t.length < 50;
+
+    if (sec !== 'NOTES' && isNotesHeader) {
       sec = 'NOTES';
       continue;
     }
@@ -461,13 +569,41 @@ function parseResume(raw: string): Parsed {
   result.achievements = buckets.ACHIEVE.map(l => l.trim()).filter(isValidBullet);
   result.certifications = buckets.CERTS.map(l => l.trim()).filter(isValidBullet);
   result.volunteerWork = buckets.VOLUNTEER.map(l => l.trim()).filter(isValidBullet);
-  result.variationsRaw = buckets.VARIATIONS.map(l => l.trim()).filter(Boolean);
+  // Clean VARIATIONS: slice to start from the first variation line if present
+  let varIdx = buckets.VARIATIONS.findIndex(l => {
+    const cleaned = l.trim().replace(/^[\s\-\*—–_:]+/g, '');
+    return /^(variation\s*1\b|alternative\s*1\b|profile\s+variation\s*1\b|1[\b\.\)])/i.test(cleaned);
+  });
+  let cleanVariations = buckets.VARIATIONS;
+  if (varIdx !== -1) {
+    cleanVariations = buckets.VARIATIONS.slice(varIdx);
+  }
+
+  result.variationsRaw = cleanVariations
+    .map(l => l.trim())
+    .filter(Boolean)
+    .filter(line => !shouldSkipInPage3(line, result.name, result.contactInfo));
+
+  // Clean NOTES: slice to start from greeting (Hi / Hello / Dear) if present
+  let noteIdx = buckets.NOTES.findIndex(l => {
+    const cleaned = l.trim().replace(/^[\s\-\*—–_:]+/g, '');
+    return /^(hi|hello|dear)\b/i.test(cleaned);
+  });
+  let cleanNotes = buckets.NOTES;
+  if (noteIdx !== -1) {
+    cleanNotes = buckets.NOTES.slice(noteIdx);
+  }
+
   const notesLines: string[] = [];
   let foundGlo = false;
-  for (const rawLine of buckets.NOTES) {
+  for (const rawLine of cleanNotes) {
     if (foundGlo) continue;
+    const cleanedLine = rawLine.trim();
+    if (shouldSkipInPage3(cleanedLine, result.name, result.contactInfo)) {
+      continue;
+    }
     notesLines.push(rawLine);
-    const cleaned = rawLine.trim().replace(/^[\s\-\*—–_:]+/g, '');
+    const cleaned = cleanedLine.replace(/^[\s\-\*—–_:]+/g, '');
     if (/^glo\b/i.test(cleaned) && cleaned.length < 15) {
       foundGlo = true;
     }
