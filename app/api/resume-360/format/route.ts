@@ -166,6 +166,11 @@ function isBullet(line: string) {
   return /^[•\-\*\+\▪\◦\■\•]/.test(line.trim()) || /^\d+[\.\)]\s+/.test(line.trim());
 }
 
+function isValidBullet(line: string): boolean {
+  const cleaned = line.replace(/^[•\-\*\+\▪\◦\■\•]\s*/, '').trim();
+  return /[a-zA-Z0-9]/.test(cleaned);
+}
+
 function formatPhoneNumber(token: string): string {
   // Strip all non-digit characters to extract the raw digits
   const digits = token.replace(/\D/g, '');
@@ -278,6 +283,12 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
 
     if (company) blocks.push({ company, location, jobTitle, dates, bullets });
   }
+
+  // Filter out empty or non-meaningful bullets that lack alphanumeric text
+  for (const block of blocks) {
+    block.bullets = block.bullets.filter(isValidBullet);
+  }
+
   return blocks;
 }
 
@@ -447,9 +458,9 @@ function parseResume(raw: string): Parsed {
   result.experiences = parseExperienceLines(buckets.EXP);
   result.otherExperiences = parseExperienceLines(buckets.OTHER);
   result.orgsContent = buckets.ORGS.map(l => l.trim()).filter(Boolean).join(' | ');
-  result.achievements = buckets.ACHIEVE.map(l => l.trim()).filter(Boolean);
-  result.certifications = buckets.CERTS.map(l => l.trim()).filter(Boolean);
-  result.volunteerWork = buckets.VOLUNTEER.map(l => l.trim()).filter(Boolean);
+  result.achievements = buckets.ACHIEVE.map(l => l.trim()).filter(isValidBullet);
+  result.certifications = buckets.CERTS.map(l => l.trim()).filter(isValidBullet);
+  result.volunteerWork = buckets.VOLUNTEER.map(l => l.trim()).filter(isValidBullet);
   result.variationsRaw = buckets.VARIATIONS.map(l => l.trim()).filter(Boolean);
   result.finalNotesRaw = buckets.NOTES.map(l => l.trim()).filter(Boolean);
 
