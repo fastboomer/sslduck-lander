@@ -462,7 +462,17 @@ function parseResume(raw: string): Parsed {
   result.certifications = buckets.CERTS.map(l => l.trim()).filter(isValidBullet);
   result.volunteerWork = buckets.VOLUNTEER.map(l => l.trim()).filter(isValidBullet);
   result.variationsRaw = buckets.VARIATIONS.map(l => l.trim()).filter(Boolean);
-  result.finalNotesRaw = buckets.NOTES.map(l => l.trim()).filter(Boolean);
+  const notesLines: string[] = [];
+  let foundGlo = false;
+  for (const rawLine of buckets.NOTES) {
+    if (foundGlo) continue;
+    notesLines.push(rawLine);
+    const cleaned = rawLine.trim().replace(/^[\s\-\*—–_:]+/g, '');
+    if (/^glo\b/i.test(cleaned) && cleaned.length < 15) {
+      foundGlo = true;
+    }
+  }
+  result.finalNotesRaw = notesLines.map(l => l.trim()).filter(Boolean);
 
   const eduLines = buckets.EDU.map(l => l.trim()).filter(Boolean);
   let ei = 0;
