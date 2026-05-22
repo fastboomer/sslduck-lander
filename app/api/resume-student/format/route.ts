@@ -354,7 +354,7 @@ function parseResume(raw: string): Parsed {
       sec = 'VARIATIONS';
       continue;
     }
-    if (up.includes('FINAL NOTES') || up.includes('RATIONALE') || up.includes('GLO\'S NOTE') || up.includes('NOTE FROM GLO') || up.includes('GLO\'S RATIONALE')) {
+    if (sec !== 'NOTES' && (up.includes('FINAL NOTES') || up.includes('RATIONALE') || (up.includes('GLO') && t.length < 40))) {
       sec = 'NOTES';
       continue;
     }
