@@ -97,7 +97,7 @@ const profProfileHeader = () => new Paragraph({ alignment: AlignmentType.CENTER,
 const sectionHeader = (t: string) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 240, after: 0 }, children: [new TextRun({ text: t, bold: true, size: S11, font: FONT })] });
 const centeredBoldP = (t: string, size = S11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size, font: FONT })] });
 const centeredP = (t: string, size = S11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, font: FONT })] });
-const leftP = (t: string, size = S11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, bold, italic, font: FONT })] });
+const leftP = (t: string, size = S11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, bold, italics: italic, font: FONT })] });
 
 const companyP = (company: string, location: string) => new Paragraph({
   alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 },
@@ -111,7 +111,7 @@ const jobTitleP = (title: string, dates: string, size = S11) => new Paragraph({
   tabStops: [{ type: TabStopType.RIGHT, position: RIGHT_TAB }],
   spacing: { ...SS, before: 0, after: 0 },
   children: [
-    new TextRun({ text: title, italic: true, size, font: FONT }),
+    new TextRun({ text: title, italics: true, size, font: FONT }),
     new TextRun({ text: '\t' + dates, size, font: FONT }),
   ],
 });
@@ -356,7 +356,7 @@ export async function POST(req: NextRequest) {
     const parsed = parseResume(resumeText);
     const doc = buildDoc(parsed);
     const buffer = await Packer.toBuffer(doc);
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

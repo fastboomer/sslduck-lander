@@ -25,9 +25,20 @@ Synthesize all extracted information into a new, professionally formatted 1 page
 Ensure compliance with the Rules listed below:
 NOTE: Student resumes differ from other resumes as follows:
 Single page only.
+
+[HEADER & RETURN ADDRESS FORMAT]
+Start immediately with the candidate's name and contact return address. It MUST be formatted as exactly 1 item per line:
+Line 1: Candidate Name (renders in 11 pt bold)
+Line 2: City, State
+Line 3: Phone Number (format strictly as a 10-digit number with hyphens and NO parenthesis: e.g. 123-456-7890)
+Line 4: Email Address (display strictly as raw text. Do NOT use "mailto:" links, do NOT print the email address twice, and do NOT wrap it in HTML or markdown hyperlinks)
+Line 5: LinkedIn URL (display strictly as raw text, do NOT wrap in HTML or markdown hyperlinks)
+CRITICAL: Do NOT include GitHub, personal websites, or any other social/professional profiles. Limit the return address strictly to these 5 lines.
+
+[STRUCTURE & SECTIONS]
 Title and Section Titles in Arial, 12 pt. bold centered: first section is PROFESSIONAL PROFILE
 Followed by job title from input_3 in Arial, 10 pt. bold centered: i.e. “Software Jr. Engineer”
-Followed by three Traits: Display three traits in Arial 10 pt. (not bolded) each no more than two words, each trait separated by " | " .
+Followed by three Traits: Display three traits in Arial 10 pt. (not bolded) each no more two words, each trait separated by " | " .
 THREE TRAITS SELECTION PROCESS: Analyze Input_3 to identify the three most critical, desired traits or skills. Cross-reference with qualifications from Inputs 1 and 2. If no exact match, select the closest relevant traits from Inputs 1 or 2. 
 * Do not fabricate traits.
 * Each trait 2 words max

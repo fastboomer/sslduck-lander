@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No letter text provided.' }, { status: 400 });
     const doc    = buildDoc(letterText);
     const buffer = await Packer.toBuffer(doc);
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

@@ -21,12 +21,10 @@ function isConversationalPreamble(line: string): boolean {
   const t = line.trim().toLowerCase();
   if (!t) return false;
   
-  // Direct matches or starts-with conversational indicators
   if (/^(certainly|sure|absolutely|here is|here's|below is|i have|based on|congratulations|happy to help|here are|sure!)/i.test(t)) {
     return true;
   }
   
-  // Longer sentences containing resume and conversational verbs/adjectives
   if (t.includes('resume') && (t.includes('here') || t.includes('formatting') || t.includes('created') || t.includes('optimized') || t.includes('structured') || t.includes('tailored') || t.includes('adjusted') || t.includes('polished') || t.includes('drafted'))) {
     return true;
   }
@@ -37,22 +35,18 @@ function isConversationalPreamble(line: string): boolean {
 // ── Pre-processor: cleans ChatGPT/other LLM quirks ──────────────────────────
 function cleanMarkdown(line: string): string {
   let t = line.trim();
-  // 1. Remove markdown code block fences (e.g. ```markdown or ```)
   if (/^```[a-zA-Z0-9]*\s*$/.test(t)) {
     return '';
   }
   
-  // 2. Strip leading hashes (e.g. ## SKILLS -> SKILLS)
+  // Replace markdown links [Text](URL) with just Text
+  t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  
   t = t.replace(/^#+\s+/, '');
-  
-  // 3. Strip bold markers (**bold** -> bold, __bold__ -> bold)
   t = t.replace(/\*\*|__/g, '');
-  
-  // 4. Strip italic markers (*italic* -> italic, _italic_ -> italic) without affecting bullets (* bullet)
   t = t.replace(/\*(?!\s)([^*]+)\*/g, '$1');
   t = t.replace(/_(?!\s)([^_]+)_/g, '$1');
   
-  // 5. Clean up any leftover single trailing/leading formatting chars if they are quirks
   if (t.startsWith('*') && !t.startsWith('* ')) {
     t = t.slice(1);
   }
@@ -70,13 +64,11 @@ function cleanMarkdown(line: string): string {
 }
 
 function preprocessLLMOutput(raw: string): string {
-  // 1. Replace block HTML elements with newlines, strip remaining tags
   let text = raw
     .replace(/<(div|p|br|h[1-6]|section|article|header)[^>]*>/gi, '\n')
     .replace(/<\/(div|p|h[1-6]|section|article|header)>/gi, '\n')
     .replace(/<[^>]+>/g, '');
 
-  // 2. Expand pipe-collapsed blobs into separate lines
   const rawLines = text.split('\n');
   const expanded: string[] = [];
 
@@ -89,7 +81,6 @@ function preprocessLLMOutput(raw: string): string {
     const hasKnown = parts.some(p => KNOWN_HEADERS.has(p.trim().toUpperCase()));
 
     if ((hasLong || hasKnown) && parts.length > 1) {
-      // Collapsed blob — expand
       for (const p of parts) {
         const cleanedPart = cleanMarkdown(p);
         const s = cleanedPart.replace(/\t+/g, ' | ').trim();
@@ -103,12 +94,10 @@ function preprocessLLMOutput(raw: string): string {
         }
       }
     } else {
-      // Normalize tabs → pipe for skills lines
       expanded.push(cleaned.replace(/\t+/g, ' | '));
     }
   }
 
-  // 3. Fix em-dash company–location separators, deduplicate headers
   const seen = new Set<string>();
   const result: string[] = [];
   let inExp = false;
@@ -126,7 +115,6 @@ function preprocessLLMOutput(raw: string): string {
     }
 
     if (inExp && !line.startsWith('•') && !line.startsWith('-')) {
-      // Convert em-dash company—location to double-space
       result.push(line.replace(/\s*[—–]\s*/g, '  '));
     } else {
       result.push(line);
@@ -139,8 +127,11 @@ function preprocessLLMOutput(raw: string): string {
 // ── Parser ───────────────────────────────────────────────────────────────────
 interface ExpBlock { company: string; location: string; jobTitle: string; dates: string; bullets: string[]; }
 interface EduBlock { school: string; major: string; }
+interface ContactInfo { cityState: string; phone: string; email: string; linkedin: string; }
+
 interface Parsed {
-  name: string; contactLines: string[];
+  name: string;
+  contactInfo: ContactInfo;
   profileJobTitle: string; profileTraits: string; profileParagraph: string;
   skillsContent: string;
   education: EduBlock[];
@@ -171,6 +162,36 @@ function isBullet(line: string) {
   return /^[•\-\*\+\▪\◦\■\•]/.test(line.trim()) || /^\d+[\.\)]\s+/.test(line.trim());
 }
 
+function formatPhoneNumber(token: string): string {
+  // Strip all non-digit characters to extract the raw digits
+  const digits = token.replace(/\D/g, '');
+  
+  // If we have exactly 10 digits
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  // If we have 11 digits and it starts with 1, strip the leading 1
+  if (digits.length === 11 && digits.startsWith('1')) {
+    const rest = digits.slice(1);
+    return `${rest.slice(0, 3)}-${rest.slice(3, 6)}-${rest.slice(6)}`;
+  }
+  
+  // Try to find any consecutive sequence of 10 digits
+  const match10 = digits.match(/\d{10}/);
+  if (match10) {
+    const d = match10[0];
+    return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  }
+  
+  // Fallback: strip parentheses and replace all dots/spaces with hyphens
+  let cleaned = token
+    .replace(/[\(\)]/g, '') // remove parentheses
+    .replace(/[\s\.]+/g, '-') // convert spaces and periods to hyphens
+    .replace(/-+/g, '-') // collapse multiple consecutive hyphens
+    .replace(/^-|-$/g, ''); // trim leading and trailing hyphens
+  return cleaned;
+}
+
 function parseExperienceLines(lines: string[]): ExpBlock[] {
   const blocks: ExpBlock[] = [];
   let i = 0;
@@ -186,14 +207,12 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
       continue;
     }
 
-    // Company line
     const { company, location } = splitCompanyLocation(line);
     i++;
 
     let jobTitle = '';
     let dates = '';
 
-    // Next non-empty, non-bullet lines until we hit bullets or next company
     while (i < lines.length) {
       const next = lines[i].trim();
       if (!next) { i++; continue; }
@@ -205,17 +224,15 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
         else { dates = next; }
         i++; break;
       } else {
-        // If it starts with an action verb and is a longer sentence, it is probably a bullet, not a job title!
         const words = next.split(/\s+/);
         const startsWithAction = /^(developed|led|created|designed|built|managed|collaborated|implemented|analyzed|assisted|worked|supported|coordinated|facilitated|formulated|spearheaded|executed|supervised|established|improved|increased|reduced|maximized|minimized|optimized|strengthened|enhanced|excelled|achieved|attained|delivered|earned|won|resolved|solv|conducted|gathered|researched|prepared|wrote|drafted|edited|presented|taught|trained|mentored|tutored)/i.test(words[0]);
         if (startsWithAction && words.length > 4) {
-          break; // Exit job title loop, treat as bullet
+          break;
         }
         jobTitle = next; i++;
       }
     }
 
-    // Bullets
     const bullets: string[] = [];
     while (i < lines.length) {
       const bl = lines[i].trim();
@@ -224,7 +241,6 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
         bullets.push(bl);
         i++;
       } else {
-        // Falling back if the AI didn't output a bullet character.
         const { location: loc } = splitCompanyLocation(bl);
         const hasDt = hasDate(bl);
         const words = bl.split(/\s+/);
@@ -248,7 +264,6 @@ function parseResume(raw: string): Parsed {
   const text = preprocessLLMOutput(raw);
   const lines = text.split('\n').map(l => l.trimEnd());
 
-  // Discard leading conversational preamble lines safely
   let startIndex = 0;
   while (startIndex < Math.min(lines.length, 10)) {
     const line = lines[startIndex].trim();
@@ -265,7 +280,8 @@ function parseResume(raw: string): Parsed {
   const cleanLines = lines.slice(startIndex);
 
   const result: Parsed = {
-    name: '', contactLines: [],
+    name: '',
+    contactInfo: { cityState: '', phone: '', email: '', linkedin: '' },
     profileJobTitle: '', profileTraits: '', profileParagraph: '',
     skillsContent: '', education: [],
     experiences: [], otherExperiences: [],
@@ -279,6 +295,8 @@ function parseResume(raw: string): Parsed {
   const buckets: Record<string, string[]> = {
     SKILLS: [], EDU: [], EXP: [], OTHER: [], CERTS: [], VOLUNTEER: [], VARIATIONS: [], NOTES: []
   };
+
+  const rawContactLines: string[] = [];
 
   for (const rawLine of cleanLines) {
     const t = rawLine.trim();
@@ -325,8 +343,11 @@ function parseResume(raw: string): Parsed {
     }
 
     if (sec === 'HEADER') {
-      if (!result.name) result.name = t;
-      else result.contactLines.push(t);
+      if (!result.name) {
+        result.name = t;
+      } else {
+        rawContactLines.push(t);
+      }
     } else if (sec === 'PROFILE') {
       if (profileState === 0) { result.profileJobTitle = t; profileState = 1; }
       else if (profileState === 1) { result.profileTraits = t; profileState = 2; }
@@ -336,6 +357,62 @@ function parseResume(raw: string): Parsed {
     }
   }
 
+  // Segment raw contact lines into individual header tokens
+  const headerTokens: string[] = [];
+  for (const line of rawContactLines) {
+    const parts = line.split(/\s*[\/|•·\t]\s*/);
+    for (const p of parts) {
+      const token = p.trim();
+      if (token) headerTokens.push(token);
+    }
+  }
+
+  let cityState = '';
+  let phone = '';
+  let email = '';
+  let linkedin = '';
+
+  for (const token of headerTokens) {
+    const tLower = token.toLowerCase();
+    
+    // 1. Exclude GitHub and other social handles strictly
+    if (tLower.includes('github') || tLower.includes('git/')) {
+      continue;
+    }
+    
+    // 2. Parse LinkedIn
+    if (/linkedin\.com/i.test(token) || /linkedin/i.test(token)) {
+      let rawUrl = token.replace(/^(linkedin:\s*|url:\s*|link:\s*)/i, '').trim();
+      // Remove https://, http://, www.
+      rawUrl = rawUrl.replace(/^https?:\/\/(www\.)?/i, '').replace(/^www\./i, '');
+      linkedin = rawUrl;
+      continue;
+    }
+    
+    // 3. Parse Email
+    const emailM = token.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    if (emailM) {
+      email = emailM[1].replace(/mailto:/gi, '').trim();
+      continue;
+    }
+    
+    // 4. Parse Phone
+    const digits = token.replace(/\D/g, '');
+    if ((digits.length === 10 || (digits.length === 11 && digits.startsWith('1'))) || /phone|tel|cell|mobile/i.test(token)) {
+      phone = formatPhoneNumber(token);
+      continue;
+    }
+    
+    // 5. Parse City, State
+    if (token.includes(',') || /[a-zA-Z\s]{4,}/.test(token)) {
+      if (!cityState && token.length < 50 && !tLower.includes('phone') && !tLower.includes('email') && !tLower.includes('linkedin')) {
+        cityState = token;
+      }
+    }
+  }
+
+  result.contactInfo = { cityState, phone, email, linkedin };
+
   result.skillsContent = buckets.SKILLS.map(l => l.trim()).filter(Boolean).join(' | ');
   result.experiences = parseExperienceLines(buckets.EXP);
   result.otherExperiences = parseExperienceLines(buckets.OTHER);
@@ -344,7 +421,6 @@ function parseResume(raw: string): Parsed {
   result.variationsRaw = buckets.VARIATIONS.map(l => l.trim()).filter(Boolean);
   result.finalNotesRaw = buckets.NOTES.map(l => l.trim()).filter(Boolean);
 
-  // Education
   const eduLines = buckets.EDU.map(l => l.trim()).filter(Boolean);
   let ei = 0;
   while (ei < eduLines.length) {
@@ -360,7 +436,11 @@ function parseResume(raw: string): Parsed {
 function estimatePage1Lines(p: Parsed): number {
   let lines = 0;
   lines += 1; // Name
-  lines += p.contactLines.length;
+  if (p.contactInfo.cityState) lines += 1;
+  if (p.contactInfo.phone) lines += 1;
+  if (p.contactInfo.email) lines += 1;
+  if (p.contactInfo.linkedin) lines += 1;
+
   lines += 2; // PROFILE header + blank
   if (p.profileJobTitle) lines += 1;
   if (p.profileTraits) lines += 1;
@@ -410,39 +490,36 @@ function estimatePage1Lines(p: Parsed): number {
 function buildDoc(p: Parsed): Document {
   const estimatedLines = estimatePage1Lines(p);
 
-  // Default tightly balanced sizes as approved by the user
-  let currentS14 = 24; // 12pt bold for headers
-  let currentS11 = 20; // 10pt content
-  let currentS10 = 18; // 9pt small text
-  let blankHeight = 120; // 6pt blank line spacer
-  let headerSpacingBefore = 180; // Space before section headers
-  let lineSpacing = 200; // Line spacing (10pt)
+  // STRICT USER SPECIFICATIONS:
+  // - Fonts MUST NOT fall below 10pt for content. Set all 9pt/11pt to strictly 10pt.
+  // - S14 headers MUST be strictly 12pt bold.
+  // - Line spacing MUST be exactly 1.0 (240 twips single spacing in docx).
+  const currentS14 = 24; // 12pt bold for section headers
+  const currentS11 = 20; // 10pt content (strictly 10pt limit)
+  const nameSize = 22;   // 11pt bold for candidate name
+  const contactSize = 20; // 10pt not bold for contact remainder
+  const lineSpacing = 240; // Strict single spacing 1.0 equivalent
 
-  // Dynamic Auto-Compactor: Scales down if content runs too long
+  // Adjust whitespace margins and header spacings to fit page strictly
+  let blankHeight = 160; // Default 8pt blank line spacer
+  let headerSpacingBefore = 240; // Default 12pt space before section headers
+
   if (estimatedLines > 52) {
-    currentS11 = 18; // 9pt content
-    currentS14 = 22; // 11pt headers
-    currentS10 = 16; // 8pt small text
-    blankHeight = 80;  // 4pt blank spacer
-    headerSpacingBefore = 120; // Space before section headers
-    lineSpacing = 180; // Line spacing (9pt)
+    blankHeight = 120; // Compress white-space to 6pt to fit (never below 10pt/6pt spacer)
+    headerSpacingBefore = 140; // Compress headers space before to 7pt
   } else if (estimatedLines > 45) {
-    currentS11 = 19; // 9.5pt content
-    currentS14 = 23; // 11.5pt headers
-    blankHeight = 100; // 5pt blank spacer
-    headerSpacingBefore = 140; // Space before section headers
-    lineSpacing = 190; // Line spacing (9.5pt)
+    blankHeight = 140; // Compress white-space to 7pt
+    headerSpacingBefore = 180; // Compress headers space before to 9pt
   }
 
   const localSS = { line: lineSpacing, lineRule: LineRuleType.AUTO };
 
+  // Helper functions with size safety locks (Math.max(size, 20) ensures no text falls below 10pt)
   const blank = () => new Paragraph({ spacing: { line: blankHeight, lineRule: LineRuleType.AUTO, before: 0, after: 0 }, children: [new TextRun({ text: '', font: FONT, size: currentS11 })] });
-  const nameP = (t: string) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size: currentS14, font: FONT })] });
-  const contactP = (t: string) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size: currentS11, font: FONT })] });
-  const sectionHeader = (t: string) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: headerSpacingBefore, after: 0 }, children: [new TextRun({ text: t, bold: true, size: currentS14, font: FONT })] });
-  const centeredBoldP = (t: string, size = currentS11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size, font: FONT })] });
-  const centeredP = (t: string, size = currentS11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, font: FONT })] });
-  const leftP = (t: string, size = currentS11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, bold, italics: italic, font: FONT })] });
+  const sectionHeader = (t: string) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: headerSpacingBefore, after: 0 }, children: [new TextRun({ text: t, bold: true, size: Math.max(currentS14, 20), font: FONT })] });
+  const centeredBoldP = (t: string, size = currentS11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size: Math.max(size, 20), font: FONT })] });
+  const centeredP = (t: string, size = currentS11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size: Math.max(size, 20), font: FONT })] });
+  const leftP = (t: string, size = currentS11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size: Math.max(size, 20), bold, italics: italic, font: FONT })] });
 
   const companyP = (company: string, location: string) => new Paragraph({
     alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 },
@@ -456,14 +533,14 @@ function buildDoc(p: Parsed): Document {
     tabStops: [{ type: TabStopType.RIGHT, position: RIGHT_TAB }],
     spacing: { ...localSS, before: 0, after: 0 },
     children: [
-      new TextRun({ text: title, italics: true, size, font: FONT }),
-      new TextRun({ text: '\t' + dates, size, font: FONT }),
+      new TextRun({ text: title, italics: true, size: Math.max(size, 20), font: FONT }),
+      new TextRun({ text: '\t' + dates, size: Math.max(size, 20), font: FONT }),
     ],
   });
 
   const bulletP = (t: string, size = currentS11) => new Paragraph({
     bullet: { level: 0 }, spacing: { ...localSS, before: 0, after: 0 },
-    children: [new TextRun({ text: t.replace(/^[•\-\*\+\▪\◦\■\•]\s*/, ''), size, font: FONT })],
+    children: [new TextRun({ text: t.replace(/^[•\-\*\+\▪\◦\■\•]\s*/, ''), size: Math.max(size, 20), font: FONT })],
   });
 
   const pageBreakP = () => new Paragraph({ children: [new PageBreak()] });
@@ -471,8 +548,44 @@ function buildDoc(p: Parsed): Document {
   const paras: Paragraph[] = [];
 
   // Page 1: Student Resume
-  paras.push(nameP(p.name));
-  for (const cl of p.contactLines) paras.push(contactP(cl));
+
+  // Return address - 1 item per line strictly
+  // Candidate Name - 11pt bold
+  paras.push(new Paragraph({
+    alignment: AlignmentType.LEFT,
+    spacing: { ...localSS, before: 0, after: 0 },
+    children: [new TextRun({ text: p.name, bold: true, size: nameSize, font: FONT })]
+  }));
+
+  // Remainder contact lines - 10pt not bold strictly (excl Github, raw email, clean phone)
+  if (p.contactInfo.cityState) {
+    paras.push(new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { ...localSS, before: 0, after: 0 },
+      children: [new TextRun({ text: p.contactInfo.cityState, size: contactSize, font: FONT })]
+    }));
+  }
+  if (p.contactInfo.phone) {
+    paras.push(new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { ...localSS, before: 0, after: 0 },
+      children: [new TextRun({ text: p.contactInfo.phone, size: contactSize, font: FONT })]
+    }));
+  }
+  if (p.contactInfo.email) {
+    paras.push(new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { ...localSS, before: 0, after: 0 },
+      children: [new TextRun({ text: p.contactInfo.email, size: contactSize, font: FONT })]
+    }));
+  }
+  if (p.contactInfo.linkedin) {
+    paras.push(new Paragraph({
+      alignment: AlignmentType.LEFT,
+      spacing: { ...localSS, before: 0, after: 0 },
+      children: [new TextRun({ text: p.contactInfo.linkedin, size: contactSize, font: FONT })]
+    }));
+  }
 
   paras.push(sectionHeader('PROFESSIONAL PROFILE'));
   if (p.profileJobTitle) paras.push(centeredBoldP(p.profileJobTitle));
