@@ -7,8 +7,6 @@ import {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const FONT = 'Arial';
-const S14 = 28; const S11 = 22; const S10 = 20;
-const SS = { line: 240, lineRule: LineRuleType.AUTO };
 const RIGHT_TAB = convertInchesToTwip(6.5);
 
 const KNOWN_HEADERS = new Set([
@@ -17,6 +15,24 @@ const KNOWN_HEADERS = new Set([
   'ADDITIONAL PROFESSIONAL PROFILE VARIATIONS', 'FINAL NOTES', 'FINAL NOTES / RATIONALE',
   '2 PROFESSIONAL PROFILE VARIATIONS:', '2 PROFESSIONAL PROFILE VARIATIONS'
 ]);
+
+// ── Conversational preamble cleaner helper ──────────────────────────────────
+function isConversationalPreamble(line: string): boolean {
+  const t = line.trim().toLowerCase();
+  if (!t) return false;
+  
+  // Direct matches or starts-with conversational indicators
+  if (/^(certainly|sure|absolutely|here is|here's|below is|i have|based on|congratulations|happy to help|here are|sure!)/i.test(t)) {
+    return true;
+  }
+  
+  // Longer sentences containing resume and conversational verbs/adjectives
+  if (t.includes('resume') && (t.includes('here') || t.includes('formatting') || t.includes('created') || t.includes('optimized') || t.includes('structured') || t.includes('tailored') || t.includes('adjusted') || t.includes('polished') || t.includes('drafted'))) {
+    return true;
+  }
+  
+  return false;
+}
 
 // ── Pre-processor: cleans ChatGPT/other LLM quirks ──────────────────────────
 function cleanMarkdown(line: string): string {
@@ -120,39 +136,6 @@ function preprocessLLMOutput(raw: string): string {
   return result.join('\n');
 }
 
-// ── Paragraph helpers ────────────────────────────────────────────────────────
-const blank = () => new Paragraph({ spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: '', font: FONT, size: S11 })] });
-const nameP = (t: string) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size: S14, font: FONT })] });
-const contactP = (t: string) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size: S11, font: FONT })] });
-const sectionHeader = (t: string) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 240, after: 0 }, children: [new TextRun({ text: t, bold: true, size: S14, font: FONT })] });
-const centeredBoldP = (t: string, size = S11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size, font: FONT })] });
-const centeredP = (t: string, size = S11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, font: FONT })] });
-const leftP = (t: string, size = S11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, bold, italics: italic, font: FONT })] });
-
-const companyP = (company: string, location: string) => new Paragraph({
-  alignment: AlignmentType.LEFT, spacing: { ...SS, before: 0, after: 0 },
-  children: [
-    new TextRun({ text: company, bold: true, size: S11, font: FONT }),
-    ...(location ? [new TextRun({ text: '  ' + location, size: S11, font: FONT })] : []),
-  ],
-});
-
-const jobTitleP = (title: string, dates: string, size = S11) => new Paragraph({
-  tabStops: [{ type: TabStopType.RIGHT, position: RIGHT_TAB }],
-  spacing: { ...SS, before: 0, after: 0 },
-  children: [
-    new TextRun({ text: title, italics: true, size, font: FONT }),
-    new TextRun({ text: '\t' + dates, size, font: FONT }),
-  ],
-});
-
-const bulletP = (t: string, size = S11) => new Paragraph({
-  bullet: { level: 0 }, spacing: { ...SS, before: 0, after: 0 },
-  children: [new TextRun({ text: t.replace(/^[•\-\*]\s*/, ''), size, font: FONT })],
-});
-
-const pageBreakP = () => new Paragraph({ children: [new PageBreak()] });
-
 // ── Parser ───────────────────────────────────────────────────────────────────
 interface ExpBlock { company: string; location: string; jobTitle: string; dates: string; bullets: string[]; }
 interface EduBlock { school: string; major: string; }
@@ -184,14 +167,24 @@ function splitCompanyLocation(line: string): { company: string; location: string
   return { company: line.trim(), location: '' };
 }
 
-function isBullet(line: string) { return /^[•\-\*]/.test(line.trim()); }
+function isBullet(line: string) {
+  return /^[•\-\*\+\▪\◦\■\•]/.test(line.trim()) || /^\d+[\.\)]\s+/.test(line.trim());
+}
 
 function parseExperienceLines(lines: string[]): ExpBlock[] {
   const blocks: ExpBlock[] = [];
   let i = 0;
   while (i < lines.length) {
     const line = lines[i].trim();
-    if (!line || isBullet(line)) { i++; continue; }
+    if (!line) { i++; continue; }
+
+    if (isBullet(line)) {
+      if (blocks.length > 0) {
+        blocks[blocks.length - 1].bullets.push(line);
+      }
+      i++;
+      continue;
+    }
 
     // Company line
     const { company, location } = splitCompanyLocation(line);
@@ -212,7 +205,12 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
         else { dates = next; }
         i++; break;
       } else {
-        // Job title line (no date yet)
+        // If it starts with an action verb and is a longer sentence, it is probably a bullet, not a job title!
+        const words = next.split(/\s+/);
+        const startsWithAction = /^(developed|led|created|designed|built|managed|collaborated|implemented|analyzed|assisted|worked|supported|coordinated|facilitated|formulated|spearheaded|executed|supervised|established|improved|increased|reduced|maximized|minimized|optimized|strengthened|enhanced|excelled|achieved|attained|delivered|earned|won|resolved|solv|conducted|gathered|researched|prepared|wrote|drafted|edited|presented|taught|trained|mentored|tutored)/i.test(words[0]);
+        if (startsWithAction && words.length > 4) {
+          break; // Exit job title loop, treat as bullet
+        }
         jobTitle = next; i++;
       }
     }
@@ -222,8 +220,23 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
     while (i < lines.length) {
       const bl = lines[i].trim();
       if (!bl) { i++; continue; }
-      if (isBullet(bl)) { bullets.push(bl); i++; }
-      else break;
+      if (isBullet(bl)) {
+        bullets.push(bl);
+        i++;
+      } else {
+        // Falling back if the AI didn't output a bullet character.
+        const { location: loc } = splitCompanyLocation(bl);
+        const hasDt = hasDate(bl);
+        const words = bl.split(/\s+/);
+        const startsWithAction = /^(developed|led|created|designed|built|managed|collaborated|implemented|analyzed|assisted|worked|supported|coordinated|facilitated|formulated|spearheaded|executed|supervised|established|improved|increased|reduced|maximized|minimized|optimized|strengthened|enhanced|excelled|achieved|attained|delivered|earned|won|resolved|solv|conducted|gathered|researched|prepared|wrote|drafted|edited|presented|taught|trained|mentored|tutored)/i.test(words[0]);
+
+        if ((loc && words.length < 8) || hasDt || (words.length < 4 && !startsWithAction)) {
+          break;
+        }
+
+        bullets.push('• ' + bl);
+        i++;
+      }
     }
 
     if (company) blocks.push({ company, location, jobTitle, dates, bullets });
@@ -234,6 +247,22 @@ function parseExperienceLines(lines: string[]): ExpBlock[] {
 function parseResume(raw: string): Parsed {
   const text = preprocessLLMOutput(raw);
   const lines = text.split('\n').map(l => l.trimEnd());
+
+  // Discard leading conversational preamble lines safely
+  let startIndex = 0;
+  while (startIndex < Math.min(lines.length, 10)) {
+    const line = lines[startIndex].trim();
+    if (!line) {
+      startIndex++;
+      continue;
+    }
+    if (isConversationalPreamble(line)) {
+      startIndex++;
+    } else {
+      break;
+    }
+  }
+  const cleanLines = lines.slice(startIndex);
 
   const result: Parsed = {
     name: '', contactLines: [],
@@ -251,19 +280,49 @@ function parseResume(raw: string): Parsed {
     SKILLS: [], EDU: [], EXP: [], OTHER: [], CERTS: [], VOLUNTEER: [], VARIATIONS: [], NOTES: []
   };
 
-  for (const raw of lines) {
-    const t = raw.trim();
+  for (const rawLine of cleanLines) {
+    const t = rawLine.trim();
     if (!t) continue;
 
-    if (t === 'PROFESSIONAL PROFILE')          { sec = 'PROFILE'; profileState = 0; continue; }
-    if (t === 'SKILLS')                         { sec = 'SKILLS'; continue; }
-    if (t === 'EDUCATION')                      { sec = 'EDU'; continue; }
-    if (t === 'PROFESSIONAL EXPERIENCE')        { sec = 'EXP'; continue; }
-    if (t === 'OTHER EXPERIENCE')               { sec = 'OTHER'; continue; }
-    if (t === 'CERTIFICATIONS')                 { sec = 'CERTS'; continue; }
-    if (t === 'VOLUNTEER WORK')                 { sec = 'VOLUNTEER'; continue; }
-    if (/^ADDITIONAL PROFESSIONAL PROFILE/.test(t) || t === '2 PROFESSIONAL PROFILE VARIATIONS:') { sec = 'VARIATIONS'; continue; }
-    if (/^FINAL NOTES/.test(t) || /^RATIONALE/.test(t))                 { sec = 'NOTES'; continue; }
+    const up = t.toUpperCase().replace(/[:#\*]/g, '').trim();
+
+    if (up === 'PROFESSIONAL PROFILE') {
+      sec = 'PROFILE';
+      profileState = 0;
+      continue;
+    }
+    if (up === 'SKILLS') {
+      sec = 'SKILLS';
+      continue;
+    }
+    if (up === 'EDUCATION') {
+      sec = 'EDU';
+      continue;
+    }
+    if (up === 'PROFESSIONAL EXPERIENCE') {
+      sec = 'EXP';
+      continue;
+    }
+    if (up === 'OTHER EXPERIENCE') {
+      sec = 'OTHER';
+      continue;
+    }
+    if (up === 'CERTIFICATIONS') {
+      sec = 'CERTS';
+      continue;
+    }
+    if (up === 'VOLUNTEER WORK') {
+      sec = 'VOLUNTEER';
+      continue;
+    }
+    if (up.includes('VARIATION') || up.includes('ADDITIONAL PROFILE') || up.includes('ADDITIONAL PROFESSIONAL PROFILE')) {
+      sec = 'VARIATIONS';
+      continue;
+    }
+    if (up.includes('FINAL NOTES') || up.includes('RATIONALE') || up.includes('GLO')) {
+      sec = 'NOTES';
+      continue;
+    }
 
     if (sec === 'HEADER') {
       if (!result.name) result.name = t;
@@ -273,7 +332,7 @@ function parseResume(raw: string): Parsed {
       else if (profileState === 1) { result.profileTraits = t; profileState = 2; }
       else result.profileParagraph += (result.profileParagraph ? ' ' : '') + t;
     } else if (sec in buckets) {
-      buckets[sec].push(raw);
+      buckets[sec].push(rawLine);
     }
   }
 
@@ -297,10 +356,121 @@ function parseResume(raw: string): Parsed {
   return result;
 }
 
+// ── Estimated Lines on Page 1 (for auto-compactor) ───────────────────────
+function estimatePage1Lines(p: Parsed): number {
+  let lines = 0;
+  lines += 1; // Name
+  lines += p.contactLines.length;
+  lines += 2; // PROFILE header + blank
+  if (p.profileJobTitle) lines += 1;
+  if (p.profileTraits) lines += 1;
+  if (p.profileParagraph) {
+    lines += Math.ceil(p.profileParagraph.split(/\s+/).length / 15) + 1; // plus blank
+  }
+  lines += 2; // SKILLS header + blank
+  if (p.skillsContent) {
+    lines += Math.ceil(p.skillsContent.split(/\s+/).length / 15);
+  }
+  lines += 2; // EDUCATION header + blank
+  for (const ed of p.education) {
+    lines += 1; // school
+    if (ed.major) lines += 1;
+    lines += 1; // blank
+  }
+  if (p.experiences.length > 0) {
+    lines += 2; // EXPERIENCE header + blank
+    for (const exp of p.experiences) {
+      lines += 1; // company
+      if (exp.jobTitle || exp.dates) lines += 1;
+      lines += exp.bullets.length;
+      lines += 1; // blank
+    }
+  }
+  if (p.otherExperiences.length > 0) {
+    lines += 2; // OTHER EXPERIENCE header + blank
+    for (const exp of p.otherExperiences) {
+      lines += 1; // company
+      if (exp.jobTitle || exp.dates) lines += 1;
+      lines += exp.bullets.length;
+      lines += 1; // blank
+    }
+  }
+  if (p.certifications.length > 0) {
+    lines += 2; // CERTS header + blank
+    lines += p.certifications.length;
+  }
+  if (p.volunteerWork.length > 0) {
+    lines += 2; // VOLUNTEER header + blank
+    lines += p.volunteerWork.length;
+  }
+  return lines;
+}
+
 // ── Document builder ─────────────────────────────────────────────────────────
 function buildDoc(p: Parsed): Document {
+  const estimatedLines = estimatePage1Lines(p);
+
+  // Default tightly balanced sizes as approved by the user
+  let currentS14 = 24; // 12pt bold for headers
+  let currentS11 = 20; // 10pt content
+  let currentS10 = 18; // 9pt small text
+  let blankHeight = 120; // 6pt blank line spacer
+  let headerSpacingBefore = 180; // Space before section headers
+  let lineSpacing = 200; // Line spacing (10pt)
+
+  // Dynamic Auto-Compactor: Scales down if content runs too long
+  if (estimatedLines > 52) {
+    currentS11 = 18; // 9pt content
+    currentS14 = 22; // 11pt headers
+    currentS10 = 16; // 8pt small text
+    blankHeight = 80;  // 4pt blank spacer
+    headerSpacingBefore = 120; // Space before section headers
+    lineSpacing = 180; // Line spacing (9pt)
+  } else if (estimatedLines > 45) {
+    currentS11 = 19; // 9.5pt content
+    currentS14 = 23; // 11.5pt headers
+    blankHeight = 100; // 5pt blank spacer
+    headerSpacingBefore = 140; // Space before section headers
+    lineSpacing = 190; // Line spacing (9.5pt)
+  }
+
+  const localSS = { line: lineSpacing, lineRule: LineRuleType.AUTO };
+
+  const blank = () => new Paragraph({ spacing: { line: blankHeight, lineRule: LineRuleType.AUTO, before: 0, after: 0 }, children: [new TextRun({ text: '', font: FONT, size: currentS11 })] });
+  const nameP = (t: string) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size: currentS14, font: FONT })] });
+  const contactP = (t: string) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size: currentS11, font: FONT })] });
+  const sectionHeader = (t: string) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: headerSpacingBefore, after: 0 }, children: [new TextRun({ text: t, bold: true, size: currentS14, font: FONT })] });
+  const centeredBoldP = (t: string, size = currentS11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size, font: FONT })] });
+  const centeredP = (t: string, size = currentS11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, font: FONT })] });
+  const leftP = (t: string, size = currentS11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size, bold, italics: italic, font: FONT })] });
+
+  const companyP = (company: string, location: string) => new Paragraph({
+    alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 },
+    children: [
+      new TextRun({ text: company, bold: true, size: currentS11, font: FONT }),
+      ...(location ? [new TextRun({ text: '  ' + location, size: currentS11, font: FONT })] : []),
+    ],
+  });
+
+  const jobTitleP = (title: string, dates: string, size = currentS11) => new Paragraph({
+    tabStops: [{ type: TabStopType.RIGHT, position: RIGHT_TAB }],
+    spacing: { ...localSS, before: 0, after: 0 },
+    children: [
+      new TextRun({ text: title, italics: true, size, font: FONT }),
+      new TextRun({ text: '\t' + dates, size, font: FONT }),
+    ],
+  });
+
+  const bulletP = (t: string, size = currentS11) => new Paragraph({
+    bullet: { level: 0 }, spacing: { ...localSS, before: 0, after: 0 },
+    children: [new TextRun({ text: t.replace(/^[•\-\*\+\▪\◦\■\•]\s*/, ''), size, font: FONT })],
+  });
+
+  const pageBreakP = () => new Paragraph({ children: [new PageBreak()] });
+
   const paras: Paragraph[] = [];
 
+  // Page 1: Student Resume
   paras.push(nameP(p.name));
   for (const cl of p.contactLines) paras.push(contactP(cl));
 
@@ -316,7 +486,7 @@ function buildDoc(p: Parsed): Document {
   paras.push(sectionHeader('EDUCATION'));
   paras.push(blank());
   for (const ed of p.education) {
-    paras.push(leftP(ed.school, S11, true));
+    paras.push(leftP(ed.school, currentS11, true));
     if (ed.major) paras.push(leftP(ed.major));
     paras.push(blank());
   }
@@ -365,22 +535,24 @@ function buildDoc(p: Parsed): Document {
     }
   }
 
+  // Page 2: Variations
   if (p.variationsRaw.length > 0 || p.finalNotesRaw.length > 0) {
     paras.push(pageBreakP());
     if (p.variationsRaw.length > 0) {
-      paras.push(centeredBoldP('Additional Professional Profile Variations', S14));
+      paras.push(centeredBoldP('Additional Professional Profile Variations', currentS14));
       paras.push(blank());
       for (const line of p.variationsRaw) {
-        paras.push(leftP(line));
+        paras.push(leftP(line, currentS11));
         paras.push(blank());
       }
     }
+    // Page 3: Final Notes / Rationale (encouraging words, signed Glo)
     if (p.finalNotesRaw.length > 0) {
       paras.push(pageBreakP());
-      paras.push(centeredBoldP('Final Notes / Rationale', S14));
+      paras.push(centeredBoldP('Final Notes / Rationale', currentS14));
       paras.push(blank());
       for (const line of p.finalNotesRaw) {
-        paras.push(leftP(line));
+        paras.push(leftP(line, currentS11));
         paras.push(blank());
       }
     }
@@ -391,8 +563,8 @@ function buildDoc(p: Parsed): Document {
       properties: {
         page: {
           margin: {
-            top: convertInchesToTwip(1), bottom: convertInchesToTwip(1),
-            left: convertInchesToTwip(1), right: convertInchesToTwip(1),
+            top: convertInchesToTwip(0.75), bottom: convertInchesToTwip(0.75),
+            left: convertInchesToTwip(0.75), right: convertInchesToTwip(0.75),
           },
         },
       },

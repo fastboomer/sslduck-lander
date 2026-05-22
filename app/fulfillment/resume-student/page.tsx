@@ -4,13 +4,18 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Prompt Template ───────────────────────────────────────────────────────────
-const PROMPT_TEMPLATE = `[OVERVIEW] Create a student resume, 1 page, adhering to the Rules listed below.
-Then, on a new page, generate two additional variations of the Professional Profile to offer different tones or emphases while maintaining alignment with the job description. Last, Review and revise the resume to ensure compliance with all rules and best practices.
+const PROMPT_TEMPLATE = `[STRICT OUTPUT RULE - NO AI INTRO OR PREAMBLE]
+You MUST NOT output any conversational introduction, commentary, or preamble (such as "Certainly! Here is the resume:" or "Here is the customized student resume..."). Your response MUST start IMMEDIATELY with the candidate's Name as the very first line of text.
+
+[OVERVIEW] Create a student resume, 1 page, adhering to the Rules listed below.
+Then, on a new page, generate exactly two additional variations of the Professional Profile to offer different tones or emphases while maintaining alignment with the job description. Last, Review and revise the resume to ensure compliance with all rules and best practices.
+
 [PROCESS-INFORMATION EXTRACTION]
 From Input_1: Extract and list key details, including work history (in reverse chronological order), job accomplishments, hard skills, soft skills, certifications, achievements, and education.
 From Input_2 (additional information), if provided: Extract and list any supplementary details relevant to the resume.
 NOTE: The client may not have a resume, in which case you will build the student resume based only on Input-2 and Input-3.
 From Input_3 (target job description): Extract and list all key requirements, responsibilities, and the employer’s desired attributes (e.g., skills, experience, qualifications).
+
 [COMPARISON]
 Compare the student resume client’s qualifications (from Inputs 1 and 2) with the requirements and attributes from Input_3, target job description.
 Identify student resume client’s strengths, direct matches, and relevant transferable skills. Do not try to be helpful by listing traits or experience not listed in input_1 and input_2. 
@@ -19,10 +24,10 @@ Identify student resume client’s strengths, direct matches, and relevant trans
 Synthesize all extracted information into a new, professionally formatted 1 page student resume.
 Ensure compliance with the Rules listed below:
 NOTE: Student resumes differ from other resumes as follows:
-Single page only
-Title and Section Titles in Arial, 14 pt. bold centered: first section is PROFESSIONAL PROFILE
-Followed by job title from input_3 in Arial, 11 pt. bold centered: i.e. “Software Jr. Engineer”
-Followed by three Traits: Display three traits in Arial 11 pt. (not bolded) each no more than two words, each trait separated by " | " .
+Single page only.
+Title and Section Titles in Arial, 12 pt. bold centered: first section is PROFESSIONAL PROFILE
+Followed by job title from input_3 in Arial, 10 pt. bold centered: i.e. “Software Jr. Engineer”
+Followed by three Traits: Display three traits in Arial 10 pt. (not bolded) each no more than two words, each trait separated by " | " .
 THREE TRAITS SELECTION PROCESS: Analyze Input_3 to identify the three most critical, desired traits or skills. Cross-reference with qualifications from Inputs 1 and 2. If no exact match, select the closest relevant traits from Inputs 1 or 2. 
 * Do not fabricate traits.
 * Each trait 2 words max
@@ -35,12 +40,7 @@ DO NOT mention the target employer's name from Input_3.
 Develop the profile by Identifying client’s key qualifications, skills, and achievements aligning with Input_3, emphasizing selected traits. 
 Use action-oriented language and ATS-friendly keywords.
 
-Create 2 Professional Profile Variations:
-Display  2 profile variations on a new page 
-Variation 1: Adjust tone (e.g., emphasize leadership or teamwork) while maintaining alignment with Input-3.
-Variation 2: Highlight a different set of skills or experiences from Inputs 1 and 2, still relevant to Input-3.
-
-[SECTIONS IN ORDER] **NOTE** Display each section, Arial, 14 pt, bold, centered
+[SECTIONS IN ORDER] **NOTE** Display each section header in Arial, 12 pt, bold, centered
 PROFESSIONAL PROFILE 
 SKILLS
 EDUCATION
@@ -50,7 +50,7 @@ CERTIFICATIONS (display only if there are certifications listed)
 VOLUNTEER WORK (display only if listed)
 
 SECTION NOTES: 
-Section headers are Arial, 14 pt bold, centered; display all content in Arial 11 pt. Not bolded;
+Section headers are Arial, 12 pt bold, centered; display all content in Arial 10 pt. Not bolded;
 SKILLS: list relevant skills, each skill 3 words max, separated by “ | “ use left justified paragraph format;
 EDUCATION: Include study major, completion and/or graduation or projected graduation dates; Bold University names
 Example:
@@ -58,19 +58,26 @@ Carnegie Mellon University - 2026
 MBA
 University of Pittsburgh - 2022
 B.S. Electrical Engineering - Honors
-PROFESSIONAL EXPERIENCE The client may have no real world work experience, therefore list class projects and awards that reflect on the target job; Internship accomplishments can substitute as work experience, show the employer and dates as well as accomplishments as an intern.
+PROFESSIONAL EXPERIENCE: The client may have no real world work experience, therefore list class projects and awards that reflect on the target job; Internship accomplishments can substitute as work experience, show the employer and dates. Format every single accomplishment or project bullet point strictly starting with a hyphen: e.g. "- Accomplished X using Y".
 CERTIFICATIONS
 VOLUNTEER WORK 
 
-[REVIEW AND REVISION]
-Review the new resume and profiles for accuracy, completeness, alignment with Input_3, ATS compatibility, and adherence to formatting rules.
-Revise as needed to address any issues, ensuring clarity, conciseness, and professionalism.
-[ENSURE ADHERENCE TO THESE RULES]
-Use clear, concise language optimized for applicant tracking systems (ATS) with relevant keywords from Input_3.
-Highlight quantifiable achievements (e.g., "Increased sales by 20%") where possible.
+[2 PROFESSIONAL PROFILE VARIATIONS SECTION]
+You must output exactly two variations of the Professional Profile under the section header:
+"2 PROFESSIONAL PROFILE VARIATIONS:"
+Display exactly 2 variations on a new page:
+Variation 1: Adjust tone (e.g., emphasize leadership or teamwork) while maintaining alignment with Input-3.
+Variation 2: Highlight a different set of skills or experiences from Inputs 1 and 2, still relevant to Input-3.
+Ensure these are clearly labeled as "Variation 1" and "Variation 2".
 
-
-NOTE: Document your rationale for the trait selection. After resume completion you will indicate in your final notes, placed below the 2 Professional Profile variations, why you chose the 3 traits used in the new student resume Professional Profile. Section. End with friendly encouraging comment. Note: Once the 3 traits are chosen, they stay the same for all 3 Professional Profiles.`;
+[FINAL NOTES / RATIONALE SECTION]
+Create a section titled exactly "FINAL NOTES / RATIONALE" below the profile variations.
+In this section:
+1. Explain the rationale for the 3 traits selected for the resume and why they align with the target job.
+2. Address the client by their first name (extracted from Input 1 or 2) in a warm, encouraging message.
+3. Write at least 2 full, high-quality, encouraging sentences supporting their career search.
+4. Follow with a warm sign-off (e.g., "Wishing you all the best in your job search!" or "To your future success!").
+5. Sign the message strictly as "Glo".`;
 
 // ── File reading helpers ──────────────────────────────────────────────────────
 async function readTextFile(file: File): Promise<string> {
