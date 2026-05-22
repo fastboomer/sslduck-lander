@@ -82,9 +82,9 @@ const tools = [
     title: 'Resume Tool – Early and Student',
     description: 'Generate Resume for Early Career, Student, and Internships.',
     icon: '🎓',
-    href: null,
+    href: '/fulfillment/resume-student',
     cta: 'Launch',
-    comingSoon: true,
+    comingSoon: false,
   },
 ];
 
