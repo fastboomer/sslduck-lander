@@ -676,14 +676,25 @@ function buildDoc(p: Parsed): Document {
         paras.push(blank());
       }
     }
-    // Page 3: Final Notes / Rationale (encouraging words, signed Glo)
+    // Page 3: Final Notes / Rationale (personal note from Glo to client)
     if (p.finalNotesRaw.length > 0) {
       paras.push(pageBreakP());
       paras.push(centeredBoldP('Final Notes / Rationale', currentS14));
       paras.push(blank());
-      for (const line of p.finalNotesRaw) {
-        paras.push(leftP(line, currentS11));
-        paras.push(blank());
+      for (const rawLine of p.finalNotesRaw) {
+        // Normalize LLM quirks: strip leading "Source:", "By:", "—", "–" prefixes
+        const line = rawLine
+          .replace(/^\s*(source|by|from|—|–|-)\s*:?\s*/i, '')
+          .trimStart();
+        const trimmed = line.trim();
+        const isWishing = trimmed === 'Wishing you all the best,';
+        const isGlo = /^glo\b/i.test(trimmed);
+        const isSignature = isWishing || isGlo;
+        // Always render "Glo" as exactly "Glo"
+        const displayLine = isGlo ? 'Glo' : line;
+        paras.push(leftP(displayLine, currentS11, false, isSignature));
+        // Keep signature tight — no blank line between "Wishing..." and "Glo"
+        if (!isGlo) paras.push(blank());
       }
     }
   }

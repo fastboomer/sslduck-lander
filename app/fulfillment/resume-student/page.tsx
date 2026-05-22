@@ -83,12 +83,13 @@ Ensure these are clearly labeled as "Variation 1" and "Variation 2".
 
 [FINAL NOTES / RATIONALE SECTION]
 Create a section titled exactly "FINAL NOTES / RATIONALE" below the profile variations.
-In this section:
-1. Explain the rationale for the 3 traits selected for the resume and why they align with the target job.
-2. Address the client by their first name (extracted from Input 1 or 2) in a warm, encouraging message.
-3. Write at least 2 full, high-quality, encouraging sentences supporting their career search.
-4. Follow with a warm sign-off (e.g., "Wishing you all the best in your job search!" or "To your future success!").
-5. Sign the message strictly as "Glo".`;
+Write a warm, personal note DIRECTLY to the resume client — speak to them as "you", not about them. Structure it exactly as follows:
+Line 1: "Hi [resume client's first name]!"
+Body (3-5 sentences): Explain which three traits you selected and WHY each one aligns with this specific job's top requirements — address the client directly (e.g. "I chose Collaborative Leader as your lead trait because the role calls for..."). Include 1-2 sentences of specific, positive observations about their background and how well it positions them for this role. Close the body with an encouraging, upbeat statement about their prospects.
+Signature (on its own lines, exactly as written):
+Wishing you all the best,
+Glo
+Title for this section: centered, 12pt bold Arial: Final Notes / Rationale`;
 
 // ── File reading helpers ──────────────────────────────────────────────────────
 async function readTextFile(file: File): Promise<string> {
