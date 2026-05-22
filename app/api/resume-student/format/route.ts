@@ -21,7 +21,7 @@ function isConversationalPreamble(line: string): boolean {
   const t = line.trim().toLowerCase();
   if (!t) return false;
   
-  if (/^(certainly|sure|absolutely|here is|here's|below is|i have|based on|congratulations|happy to help|here are|sure!)/i.test(t)) {
+  if (/^(certainly|sure|absolutely|here is|here's|below is|i have|based on|congratulations|happy to help|here are|sure!|source\s*review)/i.test(t)) {
     return true;
   }
   
