@@ -4,8 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Prompt Template ───────────────────────────────────────────────────────────
-const PROMPT_TEMPLATE = `[STRICT OUTPUT RULE - NO AI INTRO OR PREAMBLE]
-You MUST NOT output any conversational introduction, commentary, or preamble (such as "Certainly! Here is the resume:" or "Here is the customized student resume..."). Your response MUST start IMMEDIATELY with the candidate's Name as the very first line of text.
+const PROMPT_TEMPLATE = `[STRICT OUTPUT RULE - NO AI INTRO, PREAMBLE, OR META-COMMENTS]
+You MUST NOT output any conversational introduction, commentary, preamble, or meta-notes. Under no circumstances should you note any conflicts between formatting instructions and the plain-text directive. All formatting specifications (font sizes, centering, bolding) represent target layout markers for our downstream parser; understand this and proceed directly to outputting the resume without explanation. Your response MUST start IMMEDIATELY with the candidate's Name as the very first line of text.
+
+[FORMATTING INSTRUCTION CLARIFICATION]
+You are a text-generating AI model. You must output ONLY clean, 100% plain text. Do NOT attempt to produce actual rich text, HTML, RTF, or markdown formatting (do NOT use asterisks ** or __ for bold, or * or _ for italics, or # for headings). 
+The formatting specifications in this prompt (such as "12pt bold Arial", "centered", "10pt", "single spacing", etc.) are instructions for the downstream parsing engine that will convert your plain text output into a Word Document. 
+To satisfy these specifications, simply structure your plain text output according to the layout rules (e.g., using exact headers, separating items by blank lines, keeping lists on separate lines, placing company and location on the same line separated by two spaces). The parser will handle applying the bolding, font sizes, alignments, and fonts in the final Word Document. 
+Your output must be 100% plain text, without any HTML tags, RTF tags, or markdown stars/underscores.
 
 [OVERVIEW] Create a student resume, 1 page, adhering to the Rules listed below.
 Then, on a new page, generate exactly two additional variations of the Professional Profile to offer different tones or emphases while maintaining alignment with the job description. Last, Review and revise the resume to ensure compliance with all rules and best practices.
@@ -89,7 +95,9 @@ Body (3-5 sentences): Explain which three traits you selected and WHY each one a
 Signature (on its own lines, exactly as written):
 Wishing you all the best,
 Glo
-Title for this section: centered, 12pt bold Arial: Final Notes / Rationale`;
+Title for this section: centered, 12pt bold Arial: Final Notes / Rationale
+
+Output ONLY clean plain text. Do not use HTML tags or markdown. As explained in the FORMATTING INSTRUCTION CLARIFICATION section, all formatting directives represent structural guidelines for our downstream parsing engine, so do not print literal markdown (no **, __, *, _, or #) or HTML tags. Structure your plain text output exactly as follows: section headers on their own lines, bullets starting with '-', company name and location separated by two spaces, job title and date range on the same line separated by two spaces. Do not output any conversational introductions, conclusions, or explanations of prompt instructions or formatting rules. Start immediately with the candidate's name.`;
 
 // ── File reading helpers ──────────────────────────────────────────────────────
 async function readTextFile(file: File): Promise<string> {

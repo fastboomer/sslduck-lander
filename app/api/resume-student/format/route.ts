@@ -55,13 +55,28 @@ function isConversationalPreamble(line: string): boolean {
   if (t.includes('resume') && (t.includes('here') || t.includes('formatting') || t.includes('created') || t.includes('optimized') || t.includes('structured') || t.includes('tailored') || t.includes('adjusted') || t.includes('polished') || t.includes('drafted'))) {
     return true;
   }
+
+  if (
+    /system\s*prompt/i.test(t) ||
+    /plain\s*text/i.test(t) ||
+    /conflict/i.test(t) ||
+    /formatting\s*rule/i.test(t) ||
+    /directive/i.test(t) ||
+    /honor\s*the\s*explicit/i.test(t) ||
+    /let\s*me\s*proceed/i.test(t) ||
+    /work\s*through\s*the\s*analysis/i.test(t) ||
+    /produce\s*the\s*output/i.test(t)
+  ) {
+    return true;
+  }
   
   return false;
 }
 
 // ── Pre-processor: cleans ChatGPT/other LLM quirks ──────────────────────────
 function cleanMarkdown(line: string): string {
-  let t = line.trim();
+  // Normalize all unicode space-like characters (non-breaking space, zero-width space, etc.) to regular spaces first
+  let t = line.replace(/[\xa0\u200b\u200c\u200d\ufeff\t]+/g, ' ').trim();
   if (/^```[a-zA-Z0-9]*\s*$/.test(t)) {
     return '';
   }
@@ -69,8 +84,18 @@ function cleanMarkdown(line: string): string {
   // Replace markdown links [Text](URL) with just Text
   t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
   
-  // Strip page indicators completely
-  if (/^[-*_\s]*\[?page\s*\d+\]?[-*_\s]*$/i.test(t)) {
+  // Strip page indicators completely (handles "page 3", "page break", "------- PAGE BREAK -------", etc.)
+  const lower = t.toLowerCase();
+  if (
+    lower.includes('page break') ||
+    lower.includes('page breaks') ||
+    /^[-*_\s—–|*~=\[\]]*page\s*(\d+|break|breaks)[-*_\s—–|*~=\[\]]*$/i.test(t)
+  ) {
+    return '';
+  }
+
+  // Discard lines consisting purely of horizontal dividing characters
+  if (/^[-\s_—–|*~=]+$/.test(t)) {
     return '';
   }
   
@@ -324,10 +349,6 @@ function shouldSkipInPage3(t: string, name: string, contactInfo: ContactInfo): b
   const cleaned = t.trim().replace(/^[\s\-\*—–_:]+/g, '').trim();
   if (!cleaned) return true;
   
-  if (isConversationalPreamble(cleaned)) {
-    return true;
-  }
-  
   const cleanLower = cleaned.toLowerCase();
   
   // 1. Skip if it contains email address
@@ -385,7 +406,7 @@ function parseResume(raw: string): Parsed {
   const lines = text.split('\n').map(l => l.trimEnd());
 
   let startIndex = 0;
-  while (startIndex < Math.min(lines.length, 10)) {
+  while (startIndex < Math.min(lines.length, 30)) {
     const line = lines[startIndex].trim();
     if (!line) {
       startIndex++;

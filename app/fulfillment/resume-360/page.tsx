@@ -4,7 +4,16 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Prompt Template ───────────────────────────────────────────────────────────
-const PROMPT_TEMPLATE = `[OUTPUT CONTROL INSTRUCTIONS]
+const PROMPT_TEMPLATE = `[STRICT OUTPUT RULE - NO AI INTRO, PREAMBLE, OR META-COMMENTS]
+You MUST NOT output any conversational introduction, commentary, preamble, or meta-notes. Under no circumstances should you note any conflicts between formatting instructions and the plain-text directive. All formatting specifications (font sizes, centering, bolding) represent target layout markers for our downstream parser; understand this and proceed directly to outputting the resume without explanation. Your response MUST start IMMEDIATELY with the candidate's Name.
+
+[OUTPUT CONTROL INSTRUCTIONS]
+[FORMATTING INSTRUCTION CLARIFICATION]
+You are a text-generating AI model. You must output ONLY clean, 100% plain text. Do NOT attempt to produce actual rich text, HTML, RTF, or markdown formatting (do NOT use asterisks ** or __ for bold, or * or _ for italics, or # for headings). 
+The formatting specifications in this prompt (such as "14pt bold Arial", "centered", "11pt italics", "single spacing", etc.) are instructions for the downstream parsing engine that will convert your plain text output into a Word Document. 
+To satisfy these specifications, simply structure your plain text output according to the layout rules (e.g., using exact headers, separating items by blank lines, keeping lists on separate lines, placing company and location on the same line separated by two spaces). The parser will handle applying the bolding, font sizes, alignments, and fonts in the final Word Document. 
+Your output must be 100% plain text, without any HTML tags, RTF tags, or markdown stars/underscores.
+
 PROMPT
 This is a focused resume tailoring task.
 [TASK OVERVIEW] You are a friendly, professional career counselor and expert resume writer with deep knowledge of recruiting and hiring practices. Your task is to create a tailored resume and professional profile, along with two additional variations of the professional profile, using data exclusively from the three inputs provided at the end of this prompt. Employ Chain-of-Thought (CoT) reasoning, breaking down your analysis into extraction, comparison, synthesis, and revision stages to ensure clarity, accuracy, and alignment with the target job description.
@@ -93,13 +102,15 @@ Wishing you all the best,
 Glo
 Title for this section: centered, 11pt bold Arial: Final Notes / Rationale
 Ensure all content is drawn exclusively from Inputs 1 and 2, tailored to Input-3 requirements.
+
 [FINAL OUTPUT]
 New Resume: A fully formatted resume with the primary Professional Profile, adhering to all rules and best practices.
 Additional Profiles:
 Variation 1: A second version of the Professional Profile with a different tone.
 Variation 2: A third version of the Professional Profile highlighting different skills or experiences.
-Ensure the resume and all profiles are ATS-friendly, visually clean, and tailored to the target job description.
-"Output ONLY plain text — no HTML tags, no markdown. Each section header on its own line. Each bullet point on its own line starting with '•'. Company name and location separated by two spaces. Job title and date range on the same line separated by two spaces."
+Final Notes / Rationale: A warm, personal note directly to the client beginning with "Hi [Client]!", containing 3-5 sentences explaining your trait selection rationale and encouraging them, ending cleanly with Glo's signature (exactly as specified in the Final Notes section).
+Ensure the resume, profiles, and final notes are ATS-friendly, visually clean, and tailored to the target job description.
+Output ONLY clean plain text. Do not use HTML tags or markdown. As explained in the FORMATTING INSTRUCTION CLARIFICATION section, all formatting directives (like font sizes, alignments, and bolding) represent structural guidelines for our downstream parsing engine, so do not print literal markdown (no **, __, *, _, or #) or HTML tags. Structure your plain text output exactly as follows: section headers on their own lines, bullets starting with '•', company name and location separated by two spaces, job title and date range on the same line separated by two spaces.
 END PROMPT
 [END OUPTPUT CONTROL]`;
 // ── File reading helpers ──────────────────────────────────────────────────────
