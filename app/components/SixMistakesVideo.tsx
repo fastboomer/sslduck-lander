@@ -7,7 +7,7 @@ import { Volume2, VolumeX, Play, RotateCcw, RotateCw } from 'lucide-react';
 // CONFIGURATION — Update VIDEO_URL after uploading to Firebase Storage
 // Thumbnail is served from /public/six-mistakes-thumbnail.png
 // ─────────────────────────────────────────────────────────────────────────────
-const VIDEO_URL = 'https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/GLO%20VIDEOS%2Fsix-mistakes-to-avoid-like-the-plague.mp4?alt=media&token=0fd4f8fa-c9be-4731-8ecc-4569be60388d';
+const VIDEO_URL = 'https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/GLO%20VIDEOS%2Fsix-resume-mistakes-avoid-like-plague-shortened-thumbnail.mp4?alt=media&token=327daa2c-7b9e-464f-a2c6-b4c2c8b152ce';
 const THUMBNAIL_URL = '/six-mistakes-thumbnail.png.png';
 
 export const SixMistakesVideo: React.FC = () => {
