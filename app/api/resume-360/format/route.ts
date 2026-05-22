@@ -716,15 +716,20 @@ function buildDoc(p: Parsed): Document {
       paras.push(pageBreakP());
       paras.push(centeredBoldP('Final Notes / Rationale', currentS14));
       paras.push(blank());
-      for (const line of p.finalNotesRaw) {
-        const isSignature =
-          line.trim() === 'Wishing you all the best,' ||
-          line.trim() === 'Glo';
-        paras.push(leftP(line, currentS11, false, isSignature));
-        // No blank line after the name "Glo" — keep signature tight
-        if (!isSignature || line.trim() === 'Wishing you all the best,') {
-          paras.push(blank());
-        }
+      for (const rawLine of p.finalNotesRaw) {
+        // Normalize LLM quirks: strip leading "Source:", "By:", "—", "–" prefixes
+        const line = rawLine
+          .replace(/^\s*(source|by|from|—|–|-)\s*:?\s*/i, '')
+          .trimStart();
+        const trimmed = line.trim();
+        const isWishing = trimmed === 'Wishing you all the best,';
+        const isGlo = /^glo\b/i.test(trimmed);
+        const isSignature = isWishing || isGlo;
+        // Always render "Glo" as exactly "Glo" (not "Glo AI", "Source: Glo", etc.)
+        const displayLine = isGlo ? 'Glo' : line;
+        paras.push(leftP(displayLine, currentS11, false, isSignature));
+        // Keep signature lines tight — no blank line between "Wishing..." and "Glo"
+        if (!isGlo) paras.push(blank());
       }
     }
   }
