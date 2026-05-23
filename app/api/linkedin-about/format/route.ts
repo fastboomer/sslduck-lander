@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   Document, Paragraph, TextRun, AlignmentType,
-  Packer, PageBreak, LineRuleType,
+  Packer, LineRuleType,
   convertInchesToTwip,
 } from 'docx';
 
@@ -146,15 +146,16 @@ function parseAboutProfiles(raw: string): Parsed {
     if (firstLine.toLowerCase().includes('linkedin about profiles for')) {
       name = firstLine.replace(/linkedin about profiles for/gi, '').trim();
     } else {
-      name = firstLine;
+      if (firstLine.length < 35 && !firstLine.includes(':')) {
+        name = firstLine;
+      }
     }
   }
 
-  const profiles: ProfileBlock[] = [];
-  let currentProfileIndex = -1;
-  let currentSection: 'HEADLINE' | 'ABOUT' | 'NONE' = 'NONE';
+  let mode: 'HEADLINE' | 'ABOUT' | 'NOTES' | 'NONE' = 'NONE';
+  const rawHeadlines: string[] = [];
+  const rawAbouts: string[] = [];
   const notesLines: string[] = [];
-  let inNotes = false;
 
   for (const line of cleanLines) {
     const t = line.trim();
@@ -162,68 +163,95 @@ function parseAboutProfiles(raw: string): Parsed {
 
     const up = t.toUpperCase().replace(/[:#\*]/g, '').trim();
 
-    // Detect transition to notes
+    // Transition to notes
     if (/^(hi|hello|dear)\b/i.test(t)) {
-      inNotes = true;
-      currentSection = 'NONE';
+      mode = 'NOTES';
     }
 
-    if (inNotes) {
+    if (mode === 'NOTES') {
       notesLines.push(line);
       continue;
     }
 
-    // Detect profile headers
-    // Handles "Profile 1", "Version 2", "Alternative 3", "1.", etc.
-    const profMatch = t.match(/^(profile|version|alternative|variation)\s*(\d+)/i) || t.match(/^(\d+)[\.\)]/i);
-    if (profMatch) {
-      const num = parseInt(profMatch[2] || profMatch[1], 10);
-      if (num >= 1 && num <= 3) {
-        currentProfileIndex = num - 1;
-        currentSection = 'NONE';
-        while (profiles.length <= currentProfileIndex) {
-          profiles.push({ version: `Profile ${profiles.length + 1}`, headline: '', about: '' });
-        }
-        continue;
-      }
-    }
-
-    // Detect subheadings within profiles
+    // Section detections
     if (up.includes('PROFESSIONAL HEADLINE') || up === 'HEADLINE') {
-      currentSection = 'HEADLINE';
-      if (currentProfileIndex === -1) {
-        currentProfileIndex = 0;
-        profiles.push({ version: 'Profile 1', headline: '', about: '' });
-      }
+      mode = 'HEADLINE';
       continue;
     }
-
     if (up.includes('ABOUT SECTION') || up === 'ABOUT') {
-      currentSection = 'ABOUT';
-      if (currentProfileIndex === -1) {
-        currentProfileIndex = 0;
-        profiles.push({ version: 'Profile 1', headline: '', about: '' });
-      }
+      mode = 'ABOUT';
       continue;
     }
 
-    // Skip the title line itself to avoid duplicating it inside headline/about
+    // Skip the title line
     if (t.toLowerCase().includes('linkedin about profiles for')) {
       continue;
     }
 
-    // Handle text content based on state
-    if (currentProfileIndex !== -1 && currentSection !== 'NONE') {
-      const activeProfile = profiles[currentProfileIndex];
-      if (currentSection === 'HEADLINE') {
-        activeProfile.headline += (activeProfile.headline ? ' ' : '') + t;
-      } else if (currentSection === 'ABOUT') {
-        activeProfile.about += (activeProfile.about ? ' ' : '') + t;
+    // Collect text based on mode
+    if (mode === 'HEADLINE') {
+      if (/^(profile|version|alternative|variation)\s*\d+/i.test(t)) {
+        continue;
       }
+      rawHeadlines.push(t);
+    } else if (mode === 'ABOUT') {
+      if (/^(profile|version|alternative|variation)\s*\d+/i.test(t)) {
+        continue;
+      }
+      rawAbouts.push(t);
     }
   }
 
-  // Clean NOTES: slice to start from greeting (Hi / Hello / Dear) if present
+  // Clean headlines
+  const headlines: string[] = [];
+  for (const line of rawHeadlines) {
+    const cleaned = line
+      .replace(/^[\s\-\*—–_:]+/g, '')
+      .replace(/^(profile|version|alternative|variation|headline)\s*\d+[:\-\s]*/i, '')
+      .replace(/^\d+[\.\)]\s*/, '')
+      .trim();
+    if (cleaned) {
+      headlines.push(cleaned);
+    }
+  }
+
+  // Clean abouts
+  const abouts: string[] = [];
+  let currentAbout = '';
+  for (const line of rawAbouts) {
+    const cleanedLine = line.trim();
+    const isNewItem = 
+      /^(profile|version|alternative|variation|about)\s*\d+[:\-\s]*/i.test(cleanedLine) ||
+      /^\d+[\.\)]\s*/.test(cleanedLine);
+
+    if (isNewItem) {
+      if (currentAbout.trim()) {
+        abouts.push(currentAbout.trim());
+      }
+      currentAbout = cleanedLine
+        .replace(/^(profile|version|alternative|variation|about)\s*\d+[:\-\s]*/i, '')
+        .replace(/^\d+[\.\)]\s*/, '')
+        .trim();
+    } else {
+      currentAbout += (currentAbout ? '\n' : '') + cleanedLine;
+    }
+  }
+  if (currentAbout.trim()) {
+    abouts.push(currentAbout.trim());
+  }
+
+  // Match them up
+  const profilesCount = Math.max(headlines.length, abouts.length);
+  const profiles: ProfileBlock[] = [];
+  for (let i = 0; i < profilesCount; i++) {
+    profiles.push({
+      version: `Version ${i + 1}`,
+      headline: headlines[i] || '',
+      about: abouts[i] || '',
+    });
+  }
+
+  // Clean notes
   let noteIdx = notesLines.findIndex(l => {
     const cleaned = l.trim().replace(/^[\s\-\*—–_:]+/g, '');
     return /^(hi|hello|dear)\b/i.test(cleaned);
@@ -265,67 +293,68 @@ function buildDoc(p: Parsed): Document {
   const localSS = { line: lineSpacing, lineRule: LineRuleType.AUTO };
 
   const blank = () => new Paragraph({ spacing: { line: 160, lineRule: LineRuleType.AUTO, before: 0, after: 0 }, children: [new TextRun({ text: '', font: FONT, size: currentS11 })] });
-  const sectionHeader = (t: string) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: 240, after: 0 }, children: [new TextRun({ text: t, bold: true, size: currentS14, font: FONT })] });
-  const centeredBoldP = (t: string, size = currentS11) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, bold: true, size: size, font: FONT })] });
   const leftP = (t: string, size = currentS11, bold = false, italic = false) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { ...localSS, before: 0, after: 0 }, children: [new TextRun({ text: t, size: size, bold, italics: italic, font: FONT })] });
-  const pageBreakP = () => new Paragraph({ children: [new PageBreak()] });
 
   const paras: Paragraph[] = [];
 
-  // Title / Return Block
+  // Title at the very top: "LinkedIn About Profiles for John Doe"
   paras.push(new Paragraph({
-    alignment: AlignmentType.CENTER,
+    alignment: AlignmentType.LEFT,
     spacing: { ...localSS, before: 120, after: 0 },
-    children: [new TextRun({ text: 'LinkedIn About Profiles', bold: true, size: nameSize, font: FONT })]
+    children: [new TextRun({ text: `LinkedIn About Profiles for ${p.name || '[Candidate Name]'}`, bold: true, size: nameSize, font: FONT })]
   }));
-  if (p.name) {
-    paras.push(centeredBoldP(`for ${p.name}`, currentS11));
-  }
   paras.push(blank());
 
   // Profiles Block
   for (let i = 0; i < p.profiles.length; i++) {
     const prof = p.profiles[i];
     
-    // Header for each profile
-    paras.push(leftP(prof.version.toUpperCase(), currentS11, true));
+    // Add VERSION heading
+    paras.push(leftP(`VERSION ${i + 1}`, currentS11, true));
     paras.push(blank());
     
-    // Headline
+    // Headline header: "PROFESSIONAL HEADLINE"
+    paras.push(leftP('PROFESSIONAL HEADLINE', currentS11, true));
+    paras.push(blank());
+    
+    // Headline content
     if (prof.headline) {
-      paras.push(leftP('PROFESSIONAL HEADLINE:', currentS11, true));
-      paras.push(leftP(prof.headline, currentS11, false, true)); // italicize headline
-      paras.push(blank());
+      paras.push(leftP(prof.headline, currentS11, false, true)); // italic
+    } else {
+      paras.push(leftP('[Headline content not found]', currentS11, false, true));
     }
+    paras.push(blank());
     
-    // About Section
+    // About Section header: "ABOUT SECTION"
+    paras.push(leftP('ABOUT SECTION', currentS11, true));
+    paras.push(blank());
+    
+    // About content
     if (prof.about) {
-      paras.push(leftP('ABOUT SECTION:', currentS11, true));
       paras.push(leftP(prof.about, currentS11, false, false));
+    } else {
+      paras.push(leftP('[About content not found]', currentS11, false, false));
     }
     
-    // Add separator blank lines if not the last item
-    if (i < p.profiles.length - 1) {
-      paras.push(blank());
-      paras.push(blank());
-    }
+    // Blank line after each profile
+    paras.push(blank());
   }
 
-  // Page 2: Final Notes / Rationale (Glo's note)
+  // Final Notes / Rationale (Glo's note)
   if (p.finalNotesRaw.length > 0) {
-    paras.push(pageBreakP());
-    paras.push(centeredBoldP('Final Notes / Rationale', currentS14));
     paras.push(blank());
+    
     for (const rawLine of p.finalNotesRaw) {
       const line = rawLine
         .replace(/^\s*(source|by|from|—|–|-)\s*:?\s*/i, '')
         .trimStart();
       const trimmed = line.trim();
+      
       const isWishing = trimmed === 'Wishing you all the best,';
       const isGlo = /^glo\b/i.test(trimmed);
       const isSignature = isWishing || isGlo;
-      
       const displayLine = isGlo ? 'Glo' : line;
+      
       paras.push(leftP(displayLine, currentS11, false, isSignature));
       
       if (!isGlo) paras.push(blank());
