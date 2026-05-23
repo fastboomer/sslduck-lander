@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, Suspense } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Prompt Template ───────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ function FileInput({
   );
 }
 
-function HeadlinesContent() {
+export default function LinkedInHeadlinePage() {
   const router = useRouter();
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -914,14 +914,4 @@ function HeadlinesContent() {
   );
 }
 
-export default function LinkedInHeadlinePage() {
-  return (
-    <Suspense fallback={
-      <div style={{ minHeight: '100vh', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        Loading...
-      </div>
-    }>
-      <HeadlinesContent />
-    </Suspense>
-  );
-}
+
