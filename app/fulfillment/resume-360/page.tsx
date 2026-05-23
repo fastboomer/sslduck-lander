@@ -212,7 +212,7 @@ export default function Resume360Page() {
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [newInfoFile, setNewInfoFile] = useState<File | null>(null);
-  const [jobDescFile, setJobDescFile] = useState<File | null>(null);
+  const [jobDescText, setJobDescText] = useState('');
   const [model, setModel] = useState<'default' | 'gemini'>('default');
   const [output, setOutput] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -232,17 +232,14 @@ export default function Resume360Page() {
   }, [copied]);
 
   const handleCombine = async () => {
-    if (!resumeFile || !jobDescFile) {
-      setError('Please upload both the Resume and the Job Description.');
+    if (!resumeFile || !jobDescText.trim()) {
+      setError('Please upload your Resume and paste the Job Description.');
       return;
     }
     setError('');
     setProcessing(true);
     try {
-      const [resumeText, jobDescText] = await Promise.all([
-        readFile(resumeFile),
-        readFile(jobDescFile),
-      ]);
+      const resumeText = await readFile(resumeFile);
       const newInfoText = newInfoFile ? await readFile(newInfoFile) : '';
 
       const finalPrompt = `\n${PROMPT_TEMPLATE}\n<doc1-resume>\n${resumeText}\n</doc1-resume>\n\n<doc2-new-info>\n${newInfoText || 'No additional information provided.'}\n</doc2-new-info>\n\n<doc3-job-description>\n${jobDescText}\n</doc3-job-description>\n`;
@@ -751,12 +748,30 @@ export default function Resume360Page() {
               label="New Information (Optional)"
               onChange={setNewInfoFile}
             />
-            <FileInput
-              id="r3-jobdesc"
-              label="Job Description"
-              required
-              onChange={setJobDescFile}
-            />
+            <div className="r3-field">
+              <label className="r3-label" htmlFor="r3-jobdesc">
+                📂 COPY/PASTE TARGET JOB DESCRIPTION <span className="r3-required"> *</span>
+              </label>
+              <textarea
+                id="r3-jobdesc"
+                className="r3-textarea"
+                style={{
+                  minHeight: '140px',
+                  fontFamily: 'inherit',
+                  fontSize: '13px',
+                  backgroundColor: 'rgba(0,35,102,0.01)',
+                  border: '1px solid rgba(0,35,102,0.25)',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  lineHeight: '1.5',
+                  color: '#0f172a'
+                }}
+                value={jobDescText}
+                onChange={(e) => setJobDescText(e.target.value)}
+                placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
+                spellCheck={true}
+              />
+            </div>
           </div>
 
           {/* Error */}

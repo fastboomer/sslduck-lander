@@ -171,7 +171,7 @@ export default function CoverLetterPage() {
   const router = useRouter();
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [jobDescFile, setJobDescFile] = useState<File | null>(null);
+  const [jobDescText, setJobDescText] = useState('');
   const [output, setOutput] = useState('');
   const [processing, setProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -189,17 +189,14 @@ export default function CoverLetterPage() {
   }, [copied]);
 
   const handleCombine = async () => {
-    if (!resumeFile || !jobDescFile) {
-      setError('Please upload both your Resume and the Job Description.');
+    if (!resumeFile || !jobDescText.trim()) {
+      setError('Please upload your Resume and paste the Job Description.');
       return;
     }
     setError('');
     setProcessing(true);
     try {
-      const [resumeText, jobDescText] = await Promise.all([
-        readFile(resumeFile),
-        readFile(jobDescFile),
-      ]);
+      const resumeText = await readFile(resumeFile);
 
       const finalPrompt =
         `${COVER_LETTER_PROMPT}\n\nCANDIDATE RESUME:\n${resumeText}\n\nEND OF RESUME\n\nJOB DESCRIPTION:\n${jobDescText}`;
@@ -601,12 +598,30 @@ export default function CoverLetterPage() {
               required
               onChange={setResumeFile}
             />
-            <FileInput
-              id="cl-jobdesc"
-              label="Target Job Description"
-              required
-              onChange={setJobDescFile}
-            />
+            <div className="cl-field">
+              <label className="cl-label" htmlFor="cl-jobdesc">
+                📂 COPY/PASTE TARGET JOB DESCRIPTION <span className="cl-required"> *</span>
+              </label>
+              <textarea
+                id="cl-jobdesc"
+                className="cl-textarea"
+                style={{
+                  minHeight: '140px',
+                  fontFamily: 'inherit',
+                  fontSize: '13px',
+                  backgroundColor: 'rgba(0,35,102,0.01)',
+                  border: '1px solid rgba(0,35,102,0.25)',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  lineHeight: '1.5',
+                  color: '#0f172a'
+                }}
+                value={jobDescText}
+                onChange={(e) => setJobDescText(e.target.value)}
+                placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
+                spellCheck={true}
+              />
+            </div>
           </div>
 
           {/* Error */}
