@@ -152,11 +152,19 @@ function parseAboutProfiles(raw: string): Parsed {
     }
   }
 
-  const profiles: ProfileBlock[] = [];
-  let currentProfileIndex = -1;
+  // Pre-initialize exactly 3 profiles as requested
+  const profiles: ProfileBlock[] = [
+    { version: 'Version 1', headline: '', about: '' },
+    { version: 'Version 2', headline: '', about: '' },
+    { version: 'Version 3', headline: '', about: '' }
+  ];
+  
   let currentSection: 'HEADLINE' | 'ABOUT' | 'NONE' = 'NONE';
   const notesLines: string[] = [];
   let inNotes = false;
+
+  let headlineCount = 0;
+  let aboutCount = 0;
 
   for (const line of cleanLines) {
     const t = line.trim();
@@ -180,43 +188,28 @@ function parseAboutProfiles(raw: string): Parsed {
       continue;
     }
 
-    // Detect new version header boundary (Case A)
+    // Skip explicit Profile X / Version X boundary headers
     const profMatch = 
       t.match(/^(profile|version|alternative|variation)\s*(\d+)/i) || 
       (t.match(/^(\d+)[\.\)]\s*$/) && t.length < 5);
       
     if (profMatch) {
-      const num = parseInt(profMatch[2] || profMatch[1], 10);
-      if (num >= 1 && num <= 6) {
-        currentProfileIndex = num - 1;
-        currentSection = 'NONE';
-        while (profiles.length <= currentProfileIndex) {
-          profiles.push({ version: `Version ${profiles.length + 1}`, headline: '', about: '' });
-        }
-        continue;
-      }
+      currentSection = 'NONE';
+      continue;
     }
 
     // Detect section headers
     if (up.includes('PROFESSIONAL HEADLINE') || up === 'HEADLINE') {
       currentSection = 'HEADLINE';
       
-      // Preserve current index for Case A, reset to 0 ONLY if no headlines exist yet (Case B)
-      const hasHeadlines = profiles.some(p => p.headline);
-      if (!hasHeadlines) {
-        currentProfileIndex = 0;
-      }
-      if (profiles.length === 0) {
-        profiles.push({ version: 'Version 1', headline: '', about: '' });
-      }
-
-      // Check same-line content
-      const match = t.match(/^(?:professional\s+)?headline\s*[:\-\s]+(.*)/i);
+      // Match same-line content
+      const match = t.match(/^professional\s+headline[:\-\s]*(.*)/i) || t.match(/^headline[:\-\s]*(.*)/i);
       const sameLineContent = match ? match[1].trim() : '';
       if (sameLineContent) {
         const cleanedText = sameLineContent.replace(/^[\s\-\*—–_:]+/g, '').trim();
         if (cleanedText) {
-          profiles[currentProfileIndex].headline += (profiles[currentProfileIndex].headline ? ' ' : '') + cleanedText;
+          profiles[0].headline = cleanedText;
+          headlineCount = 1;
         }
       }
       continue;
@@ -225,72 +218,58 @@ function parseAboutProfiles(raw: string): Parsed {
     if (up.includes('ABOUT SECTION') || up === 'ABOUT') {
       currentSection = 'ABOUT';
       
-      // Reset index to 0 ONLY if no abouts exist yet (Case B)
-      const hasAbouts = profiles.some(p => p.about);
-      if (!hasAbouts) {
-        currentProfileIndex = 0;
-      }
-      if (profiles.length === 0) {
-        profiles.push({ version: 'Version 1', headline: '', about: '' });
-      }
-
-      // Check same-line content
-      const match = t.match(/^about(?:\s+section)?\s*[:\-\s]+(.*)/i);
+      // Match same-line content
+      const match = t.match(/^about\s+section[:\-\s]*(.*)/i) || t.match(/^about[:\-\s]*(.*)/i);
       const sameLineContent = match ? match[1].trim() : '';
       if (sameLineContent) {
         const cleanedText = sameLineContent.replace(/^[\s\-\*—–_:]+/g, '').trim();
         if (cleanedText) {
-          profiles[currentProfileIndex].about += (profiles[currentProfileIndex].about ? ' ' : '') + cleanedText;
+          profiles[0].about = cleanedText;
+          aboutCount = 1;
         }
       }
       continue;
     }
 
     // Collect content to the active profile block
-    if (currentSection !== 'NONE') {
+    if (currentSection === 'HEADLINE') {
       const listMatch = t.match(/^(\d+)[\.\)]\s*(.*)/);
+      const cleanedText = t.replace(/^[\s\-\*—–_:]+/g, '').trim();
+      
       if (listMatch) {
-        // List-based boundary (Case B)
+        // Explicit list numbers like "1. Headline text"
         const num = parseInt(listMatch[1], 10);
-        if (num >= 1 && num <= 6) {
-          currentProfileIndex = num - 1;
-          while (profiles.length <= currentProfileIndex) {
-            profiles.push({ version: `Version ${profiles.length + 1}`, headline: '', about: '' });
-          }
-          const cleanedText = listMatch[2]
-            .replace(/^[\s\-\*—–_:]+/g, '')
-            .trim();
-          
-          if (cleanedText) {
-            const p = profiles[currentProfileIndex];
-            if (currentSection === 'HEADLINE') {
-              p.headline += (p.headline ? ' ' : '') + cleanedText;
-            } else if (currentSection === 'ABOUT') {
-              p.about += (p.about ? ' ' : '') + cleanedText;
-            }
-          }
-          continue;
+        if (num >= 1 && num <= 3) {
+          profiles[num - 1].headline = listMatch[2].replace(/^[\s\-\*—–_:]+/g, '').trim();
+        }
+      } else if (cleanedText) {
+        // Flat grouped lines under a single header
+        if (headlineCount < 3) {
+          profiles[headlineCount].headline = cleanedText;
+          headlineCount++;
+        } else {
+          // Fallback append to last
+          profiles[2].headline += (profiles[2].headline ? ' ' : '') + cleanedText;
         }
       }
-
-      // Standard content block
-      if (currentProfileIndex === -1) {
-        currentProfileIndex = 0;
-      }
-      while (profiles.length <= currentProfileIndex) {
-        profiles.push({ version: `Version ${profiles.length + 1}`, headline: '', about: '' });
-      }
-
-      const cleanedText = t
-        .replace(/^[\s\-\*—–_:]+/g, '')
-        .trim();
+    } else if (currentSection === 'ABOUT') {
+      const listMatch = t.match(/^(\d+)[\.\)]\s*(.*)/);
+      const cleanedText = t.replace(/^[\s\-\*—–_:]+/g, '').trim();
       
-      if (cleanedText) {
-        const p = profiles[currentProfileIndex];
-        if (currentSection === 'HEADLINE') {
-          p.headline += (p.headline ? ' ' : '') + cleanedText;
-        } else if (currentSection === 'ABOUT') {
-          p.about += (p.about ? ' ' : '') + cleanedText;
+      if (listMatch) {
+        // Explicit list numbers like "1. About text"
+        const num = parseInt(listMatch[1], 10);
+        if (num >= 1 && num <= 3) {
+          profiles[num - 1].about = listMatch[2].replace(/^[\s\-\*—–_:]+/g, '').trim();
+        }
+      } else if (cleanedText) {
+        // Flat grouped paragraphs under a single header
+        if (aboutCount < 3) {
+          profiles[aboutCount].about = cleanedText;
+          aboutCount++;
+        } else {
+          // Fallback append to last
+          profiles[2].about += (profiles[2].about ? '\n' : '') + cleanedText;
         }
       }
     }
