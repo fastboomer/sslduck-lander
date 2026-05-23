@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
 import { Suspense } from 'react';
 import { GloLiveHub } from '@/app/components/GloLiveHub';
-import Header from '@/app/components/Header';
 import { Footer } from '@/app/components/Footer';
 
 function GapSuccessContent() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const reportId = searchParams.get('reportId');
     const [candidateName, setCandidateName] = useState('Candidate');
@@ -48,8 +48,19 @@ function GapSuccessContent() {
 
     return (
         <main className="min-h-screen bg-background">
-            <Header />
-            <div className="pt-32 pb-20 px-6">
+            <nav className="flex items-center justify-between px-10 py-4 border-b-2 border-royal-blue bg-white sticky top-0 z-50">
+                <a href="https://sslduck-lander.vercel.app" className="flex items-center gap-2.5 no-underline cursor-pointer">
+                    <img src="/logo.png" alt="SSLDuck Logo" className="h-10 w-auto" />
+                    <div className="flex flex-col">
+                        <span className="text-[17px] font-black text-royal-blue tracking-tighter leading-none font-serif">SSLDUCK</span>
+                        <span className="text-[8px] font-bold text-royal-blue/40 tracking-[0.2em] uppercase mt-0.5">VERSION 12-PRO</span>
+                    </div>
+                </a>
+                <button className="bg-transparent border-2 border-royal-blue text-royal-blue text-xs font-bold px-4 py-1.5 rounded-md cursor-pointer hover:bg-royal-blue hover:text-white transition-all font-sans" onClick={() => router.push('/fulfillment')}>
+                    ← Back to Suite
+                </button>
+            </nav>
+            <div className="pt-16 pb-20 px-6">
                 <div className="max-w-4xl mx-auto space-y-12">
 
                     {/* Success Banner */}

@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import Header from '@/app/components/Header';
 import { Footer } from '@/app/components/Footer';
 import { PostGloClose } from '@/app/components/PostGloClose';
 import { Loader2, Sparkles } from 'lucide-react';
 
 function OfferPageContent() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const reportId = searchParams.get('reportId');
     const [firstName, setFirstName] = useState<string>('');
@@ -73,8 +73,19 @@ function OfferPageContent() {
 
     return (
         <main className="min-h-screen bg-background">
-            <Header />
-            <div className="pt-36 pb-20 px-4">
+            <nav className="flex items-center justify-between px-10 py-4 border-b-2 border-royal-blue bg-white sticky top-0 z-50">
+                <a href="https://sslduck-lander.vercel.app" className="flex items-center gap-2.5 no-underline cursor-pointer">
+                    <img src="/logo.png" alt="SSLDuck Logo" className="h-10 w-auto" />
+                    <div className="flex flex-col">
+                        <span className="text-[17px] font-black text-royal-blue tracking-tighter leading-none font-serif">SSLDUCK</span>
+                        <span className="text-[8px] font-bold text-royal-blue/40 tracking-[0.2em] uppercase mt-0.5">VERSION 12-PRO</span>
+                    </div>
+                </a>
+                <button className="bg-transparent border-2 border-royal-blue text-royal-blue text-xs font-bold px-4 py-1.5 rounded-md cursor-pointer hover:bg-royal-blue hover:text-white transition-all font-sans" onClick={() => router.push('/fulfillment')}>
+                    ← Back to Suite
+                </button>
+            </nav>
+            <div className="pt-16 pb-20 px-4">
                 {/* Branded top label */}
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
