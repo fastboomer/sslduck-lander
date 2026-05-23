@@ -43,7 +43,11 @@ VERSION 4
 VERSION 5
 [Headline 5 text]
 
-CLOSING: After completing the 5 Headlines, finish by writing a personal paragraph starting with "Hi first_name"! and begin your comments by telling them about the features of the 5 headlines you have just written. Finish by wishing them all success. Use this signature:
+CLOSING: After completing the 5 Headlines, finish by writing a personalized closing section:
+- Start with a personal greeting: "Hi first_name!"
+- Next, explain the strategy of each headline in exactly 5 distinct paragraphs (one paragraph for each version). Each paragraph MUST start on a new line and begin explicitly with the label "Version X:" (where X is 1 to 5).
+- Finish by wishing them all success in their job search.
+Use this signature:
 Wishing you all the best,
 Glo
 `;
