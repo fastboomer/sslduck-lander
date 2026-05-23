@@ -9,7 +9,7 @@ const PROMPT_TEMPLATE = `[STRICT OUTPUT RULE - NO AI INTRO, PREAMBLE, OR META-CO
 You MUST NOT output any conversational introduction, commentary, preamble, or meta-notes. Under no circumstances should you note any conflicts between formatting instructions and the plain-text directive. All formatting specifications represent target layout markers for our downstream parser; understand this and proceed directly to outputting the LinkedIn Headlines without explanation. Your response MUST start IMMEDIATELY with the title "LinkedIn Headlines for [first_name last_name]".
 
 [STRICT LENGTH CONTROL RULE]
-Each of the 3 LinkedIn Headlines MUST be under 220 characters. Ensure high impact and professional formatting. You must count characters and ensure each version stays strictly under the 220-character limit.
+Each of the 5 LinkedIn Headlines MUST be under 220 characters. Ensure high impact and professional formatting. You must count characters and ensure each version stays strictly under the 220-character limit.
 
 [OUTPUT CONTROL INSTRUCTIONS]
 [FORMATTING INSTRUCTION CLARIFICATION]
@@ -23,11 +23,11 @@ SYSTEM INSTRUCTIONS: You are responding as a friendly, professional, highly expe
 
 BACKGROUND: I have included in this prompt a resume placed between <resume> and </resume>; I have also included target job description between <job_description> and </job_description> which you will carefully analyze.
 
-TASK: Using the resume and job description provided, create 3 optimized LinkedIn "Professional Headlines" in similar but different versions (e.g. one keyword-rich, one outcome-driven, one hybrid/creative).
+TASK: Using the resume and job description provided, create 5 optimized LinkedIn "Professional Headlines" in similar but different versions (e.g. one keyword-rich, one outcome-driven, one hybrid/creative).
 Length: Each headline MUST be under 220 characters.
 
 FORMAT: Please display the title: "LinkedIn Headlines for [first_name last_name]"
-Then, create 3 LinkedIn Headlines clearly separated as:
+Then, create 5 LinkedIn Headlines clearly separated as:
 VERSION 1
 [Headline 1 text]
 
@@ -37,7 +37,13 @@ VERSION 2
 VERSION 3
 [Headline 3 text]
 
-CLOSING: After completing the 3 Headlines, finish by writing a personal paragraph starting with "Hi first_name"! and begin your comments by telling them about the features of the 3 headlines you have just written. Finish by wishing them all success. Use this signature:
+VERSION 4
+[Headline 4 text]
+
+VERSION 5
+[Headline 5 text]
+
+CLOSING: After completing the 5 Headlines, finish by writing a personal paragraph starting with "Hi first_name"! and begin your comments by telling them about the features of the 5 headlines you have just written. Finish by wishing them all success. Use this signature:
 Wishing you all the best,
 Glo
 `;
@@ -204,7 +210,7 @@ export default function LinkedInHeadlinePage() {
       if (cleaned) cleanLines.push(cleaned);
     }
 
-    const headlinesTexts: string[] = ['', '', ''];
+    const headlinesTexts: string[] = ['', '', '', '', ''];
     let currentVersion = 0;
     let inNotes = false;
 
@@ -223,13 +229,13 @@ export default function LinkedInHeadlinePage() {
 
       if (versionMatch) {
         const num = parseInt(versionMatch[2] || versionMatch[1], 10);
-        if (num >= 1 && num <= 3) {
+        if (num >= 1 && num <= 5) {
           currentVersion = num;
         }
         continue;
       }
 
-      if (currentVersion >= 1 && currentVersion <= 3) {
+      if (currentVersion >= 1 && currentVersion <= 5) {
         const cleanedText = t.replace(/^[\s\-\*—–_:]+/g, '').trim();
         if (cleanedText) {
           headlinesTexts[currentVersion - 1] += (headlinesTexts[currentVersion - 1] ? ' ' : '') + cleanedText;
@@ -238,7 +244,7 @@ export default function LinkedInHeadlinePage() {
     }
 
     const results: LengthCheckResult[] = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const val = headlinesTexts[i].trim();
       if (val) {
         const charCount = val.length;

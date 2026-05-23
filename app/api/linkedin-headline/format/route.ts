@@ -124,7 +124,7 @@ function parseHeadlineProfiles(raw: string): Parsed {
     }
   }
 
-  const headlines: string[] = ['', '', ''];
+  const headlines: string[] = ['', '', '', '', ''];
   const notesLines: string[] = [];
   let inNotes = false;
   let currentVersion = 0;
@@ -154,14 +154,14 @@ function parseHeadlineProfiles(raw: string): Parsed {
 
     if (versionMatch) {
       const num = parseInt(versionMatch[2] || versionMatch[1], 10);
-      if (num >= 1 && num <= 3) {
+      if (num >= 1 && num <= 5) {
         currentVersion = num;
       }
       continue;
     }
 
     // Add content to the current version headline
-    if (currentVersion >= 1 && currentVersion <= 3) {
+    if (currentVersion >= 1 && currentVersion <= 5) {
       const cleanedText = t.replace(/^[\s\-\*—–_:]+/g, '').trim();
       if (cleanedText) {
         headlines[currentVersion - 1] += (headlines[currentVersion - 1] ? ' ' : '') + cleanedText;
