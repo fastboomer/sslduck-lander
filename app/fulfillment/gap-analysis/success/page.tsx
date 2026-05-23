@@ -5,9 +5,9 @@ import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
 import { Suspense } from 'react';
-import { GloLiveHub } from '../../components/GloLiveHub';
-import Header from '../../components/Header';
-import { Footer } from '../../components/Footer';
+import { GloLiveHub } from '@/app/components/GloLiveHub';
+import Header from '@/app/components/Header';
+import { Footer } from '@/app/components/Footer';
 
 function GapSuccessContent() {
     const searchParams = useSearchParams();
@@ -143,7 +143,7 @@ function GapSuccessContent() {
                                 </div>
                                 <div className="shrink-0">
                                     <a
-                                        href={reportId ? `/gap-analysis/offer?reportId=${reportId}` : '/gap-analysis/offer'}
+                                        href={reportId ? `/fulfillment/gap-analysis/offer?reportId=${reportId}` : '/fulfillment/gap-analysis/offer'}
                                         className="bg-white text-royal-blue px-12 py-5 rounded-full font-bold text-xl hover:scale-105 active:scale-95 transition-all shadow-2xl inline-block text-center"
                                     >Book My Rewrite</a>
                                 </div>

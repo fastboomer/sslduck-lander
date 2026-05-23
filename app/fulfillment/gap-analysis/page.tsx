@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GapIntake } from '../components/GapIntake';
-import Header from '../components/Header';
-import { Footer } from '../components/Footer';
+import { GapIntake } from '@/app/components/GapIntake';
+import Header from '@/app/components/Header';
+import { Footer } from '@/app/components/Footer';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Search, FileText, Zap } from 'lucide-react';
 
@@ -12,7 +12,7 @@ export default function GapAnalysisPage() {
     const router = useRouter();
 
     const handleSuccess = (data: { reportId: string }) => {
-        router.push(`/gap-analysis/success?reportId=${data.reportId}`);
+        router.push(`/fulfillment/gap-analysis/success?reportId=${data.reportId}`);
     };
 
     return (

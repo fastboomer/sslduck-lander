@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
         // 5. Prepare Final Prompt — generate reportId now so custom_offer_url is ready
         const reportId = `gap-${Date.now()}`;
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://sslduck-lander.vercel.app';
-        const customOfferUrl = `${baseUrl}/gap-analysis/offer?reportId=${reportId}`;
+        const customOfferUrl = `${baseUrl}/fulfillment/gap-analysis/offer?reportId=${reportId}`;
         console.log(`[GAP_PROCESS] Report ID: ${reportId} | Offer URL: ${customOfferUrl}`);
 
         const finalPrompt = promptTemplate

@@ -46,7 +46,7 @@ const tools = [
     title: 'GAP Analysis & Actionable Advice',
     description: 'Goals And Profile of Target Company with actionable advice based on resume and job analysis.',
     icon: '🎯',
-    href: '/gap-analysis',
+    href: '/fulfillment/gap-analysis',
     cta: 'Launch',
     comingSoon: false,
   },
@@ -663,7 +663,7 @@ function FulfillmentDashboard() {
               {daysLeft !== null && daysLeft <= 60 && (
                 <div className="bd-renew-strip">
                   <p>⚡ <strong>{daysLeft} days</strong> left — lock in your rate before it increases.</p>
-                  <a href="/gap-analysis/offer?renew=true" className="bd-renew-cta" id="dash-renew-btn">
+                  <a href="/fulfillment/gap-analysis/offer?renew=true" className="bd-renew-cta" id="dash-renew-btn">
                     Extend My Access →
                   </a>
                 </div>

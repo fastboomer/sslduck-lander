@@ -77,10 +77,10 @@ export const ResumeOfferCard: React.FC = () => {
             try {
                 result = JSON.parse(responseText);
                 setProgress(100);
-                console.log("[DEBUG] Success! Redirecting to:", `/gap-analysis/success?reportId=${result.reportId}`);
+                console.log("[DEBUG] Success! Redirecting to:", `/fulfillment/gap-analysis/success?reportId=${result.reportId}`);
                 // Add a small delay so user sees 100% and success message
                 setTimeout(() => {
-                    router.push(`/gap-analysis/success?reportId=${result.reportId}`);
+                    router.push(`/fulfillment/gap-analysis/success?reportId=${result.reportId}`);
                 }, 800);
                 // Return here so we don't set isProcessing(false) -> avoids resetting progress bar
                 return;

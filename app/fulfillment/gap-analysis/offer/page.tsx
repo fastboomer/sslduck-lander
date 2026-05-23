@@ -3,9 +3,9 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import Header from '../../components/Header';
-import { Footer } from '../../components/Footer';
-import { PostGloClose } from '../../components/PostGloClose';
+import Header from '@/app/components/Header';
+import { Footer } from '@/app/components/Footer';
+import { PostGloClose } from '@/app/components/PostGloClose';
 import { Loader2, Sparkles } from 'lucide-react';
 
 function OfferPageContent() {
