@@ -64,9 +64,9 @@ const tools = [
     title: 'LinkedIn Headline',
     description: "Your headline speaks before you do, so let's get it right. Don't waste the chance to align your skills with opportunity.",
     icon: '💼',
-    href: null,
+    href: '/fulfillment/linkedin-headline',
     cta: 'Launch',
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     id: 'linkedin-about',
