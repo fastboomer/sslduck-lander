@@ -7,6 +7,9 @@ import { useRouter } from 'next/navigation';
 const PROMPT_TEMPLATE = `[STRICT OUTPUT RULE - NO AI INTRO, PREAMBLE, OR META-COMMENTS]
 You MUST NOT output any conversational introduction, commentary, preamble, or meta-notes. Under no circumstances should you note any conflicts between formatting instructions and the plain-text directive. All formatting specifications (font sizes, centering, bolding) represent target layout markers for our downstream parser; understand this and proceed directly to outputting the LinkedIn About Profiles without explanation. Your response MUST start IMMEDIATELY with the title "LinkedIn About Profiles for [first_name last_name]".
 
+[STRICT LENGTH CONTROL RULE]
+Each of the 3 LinkedIn About Sections MUST be under 200 words and strictly under 1,200 characters (including spaces, approximately 4 to 6 sentences max). If any version exceeds 1,200 characters, it will fail our downstream parsing pipeline and be rejected. Maintain high impact while adhering strictly to this hard character ceiling. You must count characters and ensure you stay under 1,200 characters (including spaces) for each profile summary.
+
 [OUTPUT CONTROL INSTRUCTIONS]
 [FORMATTING INSTRUCTION CLARIFICATION]
 You are a text-generating AI model. You must output ONLY clean, 100% plain text. Do NOT attempt to produce actual rich text, HTML, RTF, or markdown formatting (do NOT use asterisks ** or __ for bold, or * or _ for italics, or # for headings). 
@@ -21,7 +24,7 @@ SYSTEM INSTRUCTIONS: You are responding as a friendly, professional, highly expe
 BACKGROUND: I have included in this prompt a resume placed between <resume> and </resume>; I have also included target job description between <job_description> and </job_description> which you will carefully analyze. You will also find an example provided by Harvard Career Services.
 
 TASK: Using the resume and job description provided, and in accordance with the example below, create 3 optimized LinkedIn “About Profiles” in similar but different versions. Keep the tone friendly, conversational, and professional but with a more personal feel than expressed in the resume.
-Length: Should not exceed 150 words. 
+Length: Each LinkedIn About Section MUST be under 200 words (strictly under 1,200 characters including spaces). Absolutely do not exceed this limit.
 
 FORMAT: Please display the title, bold: “LinkedIn About Profiles for [first_name last_name]” 
 Then, create 3 LinkedIn About Profiles that each effectively communicate the resume holder's experience, qualifications, and unique value, based on the provided resume and job description.
@@ -44,7 +47,7 @@ I’m a research scientist working to better understand how neural activity moti
 Here’s what makes it a strong profile summary:
 Can be skimmed in 30 seconds or less
 Professional headline is below 120 characters, lists career focus and components of work
-About section should not exceed 150 words and should include industry-related keywords, core skills, strengths, talents and interests.
+About section must be under 200 words (strictly under 1,200 characters including spaces) and should include industry-related keywords, core skills, strengths, talents and interests.
 Well written in a professional but personal style in the first person, no spelling and grammatical mistakes
 Answers questions that provides deeper insight about the individual: What makes her/him unique? Where is their career headed? How would others describe her/him? What are their values and personal traits?
 
@@ -160,12 +163,142 @@ export default function LinkedInAboutPage() {
   const [downloading, setDownloading] = useState(false);
   const [dlError, setDlError] = useState('');
 
+  interface LengthCheckResult {
+    version: number;
+    wordCount: number;
+    charCount: number;
+    exceeded: boolean;
+  }
+  const [warnings, setWarnings] = useState<LengthCheckResult[]>([]);
+
   // Reset copied state after 2.5 s
   useEffect(() => {
     if (!copied) return;
     const t = setTimeout(() => setCopied(false), 2500);
     return () => clearTimeout(t);
   }, [copied]);
+
+  // Client-side length validation hook
+  useEffect(() => {
+    if (!llmOutput.trim()) {
+      setWarnings([]);
+      return;
+    }
+
+    // Client-side parser replicating app/api/linkedin-about/format/route.ts
+    let text = llmOutput
+      .replace(/<(div|p|br|h[1-6]|section|article|header)[^>]*>/gi, '\n')
+      .replace(/<\/(div|p|h[1-6]|section|article|header)>/gi, '\n')
+      .replace(/<[^>]+>/g, '');
+
+    const rawLines = text.split('\n');
+    const cleanLines: string[] = [];
+
+    for (const line of rawLines) {
+      let t = line.replace(/[\xa0\u200b\u200c\u200d\ufeff\t]+/g, ' ').trim();
+      if (/^```[a-zA-Z0-9]*\s*$/.test(t)) continue;
+      t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+      if (
+        t.toLowerCase().includes('page break') ||
+        t.toLowerCase().includes('page breaks') ||
+        /^[-*_\s—–|*~=\[\]]*page\s*(\d+|break|breaks)[-*_\s—–|*~=\[\]]*$/i.test(t)
+      ) {
+        continue;
+      }
+      if (/^[-\s_—–|*~=]+$/.test(t)) continue;
+      t = t.replace(/^#+\s+/, '');
+      t = t.replace(/\*\*|__/g, '');
+      t = t.replace(/\*(?!\s)([^*]+)\*/g, '$1');
+      t = t.replace(/_(?!\s)([^_]+)_/g, '$1');
+      if (t.startsWith('*') && !t.startsWith('* ')) t = t.slice(1);
+      if (t.endsWith('*') && !t.endsWith(' *')) t = t.slice(0, -1);
+      if (t.startsWith('_') && !t.startsWith('_ ')) t = t.slice(1);
+      if (t.endsWith('_') && !t.endsWith(' _')) t = t.slice(0, -1);
+      const cleaned = t.trim();
+      if (cleaned) cleanLines.push(cleaned);
+    }
+
+    const aboutTexts: string[] = ['', '', ''];
+    let currentSection: 'HEADLINE' | 'ABOUT' | 'NONE' = 'NONE';
+    let aboutCount = 0;
+    let inNotes = false;
+
+    for (const line of cleanLines) {
+      const t = line.trim();
+      if (!t) continue;
+      const up = t.toUpperCase().replace(/[:#\*]/g, '').trim();
+
+      if (/^(hi|hello|dear)\b/i.test(t)) {
+        inNotes = true;
+        currentSection = 'NONE';
+      }
+      if (inNotes) continue;
+      if (t.toLowerCase().includes('linkedin about profiles for')) continue;
+
+      const profMatch = 
+        t.match(/^(profile|version|alternative|variation)\s*(\d+)/i) || 
+        (t.match(/^(\d+)[\.\)]\s*$/) && t.length < 5);
+        
+      if (profMatch) {
+        currentSection = 'NONE';
+        continue;
+      }
+
+      if (up.includes('PROFESSIONAL HEADLINE') || up === 'HEADLINE') {
+        currentSection = 'HEADLINE';
+        continue;
+      }
+
+      if (up.includes('ABOUT SECTION') || up === 'ABOUT') {
+        currentSection = 'ABOUT';
+        const match = t.match(/^about\s+section[:\-\s]*(.*)/i) || t.match(/^about[:\-\s]*(.*)/i);
+        const sameLineContent = match ? match[1].trim() : '';
+        if (sameLineContent) {
+          const cleanedText = sameLineContent.replace(/^[\s\-\*—–_:]+/g, '').trim();
+          if (cleanedText) {
+            aboutTexts[0] = cleanedText;
+            aboutCount = 1;
+          }
+        }
+        continue;
+      }
+
+      if (currentSection === 'ABOUT') {
+        const listMatch = t.match(/^(\d+)[\.\)]\s*(.*)/);
+        const cleanedText = t.replace(/^[\s\-\*—–_:]+/g, '').trim();
+        
+        if (listMatch) {
+          const num = parseInt(listMatch[1], 10);
+          if (num >= 1 && num <= 3) {
+            aboutTexts[num - 1] = listMatch[2].replace(/^[\s\-\*—–_:]+/g, '').trim();
+          }
+        } else if (cleanedText) {
+          if (aboutCount < 3) {
+            aboutTexts[aboutCount] = cleanedText;
+            aboutCount++;
+          } else {
+            aboutTexts[2] += (aboutTexts[2] ? '\n' : '') + cleanedText;
+          }
+        }
+      }
+    }
+
+    const results: LengthCheckResult[] = [];
+    for (let i = 0; i < 3; i++) {
+      const val = aboutTexts[i].trim();
+      if (val) {
+        const charCount = val.length;
+        const wordCount = val.split(/\s+/).filter(Boolean).length;
+        results.push({
+          version: i + 1,
+          wordCount,
+          charCount,
+          exceeded: wordCount > 200 || charCount > 1200
+        });
+      }
+    }
+    setWarnings(results);
+  }, [llmOutput]);
 
   const handleCombine = async () => {
     if (!resumeFile || !jobDescFile) {
@@ -757,6 +890,47 @@ export default function LinkedInAboutPage() {
                 spellCheck={false}
               />
             </div>
+
+            {/* Client-side parsed length warnings */}
+            {warnings.length > 0 && (
+              <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+                {warnings.map((w) => (
+                  <div
+                    key={w.version}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      marginBottom: '8px',
+                      border: w.exceeded ? '1px solid #fca5a5' : '1px solid #a7f3d0',
+                      background: w.exceeded ? '#fef2f2' : '#ecfdf5',
+                      color: w.exceeded ? '#b91c1c' : '#047857',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}
+                  >
+                    <span>
+                      <strong>Version {w.version} Length:</strong> {w.wordCount} words ({w.charCount} characters).
+                    </span>
+                    <span style={{ 
+                      fontSize: '11px', 
+                      fontWeight: '800', 
+                      textTransform: 'uppercase', 
+                      padding: '2px 6px', 
+                      borderRadius: '4px', 
+                      background: w.exceeded ? '#fee2e2' : '#d1fae5', 
+                      color: w.exceeded ? '#b91c1c' : '#047857' 
+                    }}>
+                      {w.exceeded ? '⚠️ Exceeds Limit' : '✓ Good Length'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             <button
               id="r3-download-btn"
               className="r3-dl-btn"
