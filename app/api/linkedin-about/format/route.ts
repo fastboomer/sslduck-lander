@@ -200,8 +200,8 @@ function parseAboutProfiles(raw: string): Parsed {
     // Detect section headers
     if (up.includes('PROFESSIONAL HEADLINE') || up === 'HEADLINE') {
       currentSection = 'HEADLINE';
-      // Reset index to 0 ONLY if we are in Case B (grouped lists under a single header).
-      // If we are in Case A, other headlines are already populated, so we preserve the current index.
+      
+      // Preserve current index for Case A, reset to 0 ONLY if no headlines exist yet (Case B)
       const hasHeadlines = profiles.some(p => p.headline);
       if (!hasHeadlines) {
         currentProfileIndex = 0;
@@ -209,18 +209,39 @@ function parseAboutProfiles(raw: string): Parsed {
       if (profiles.length === 0) {
         profiles.push({ version: 'Version 1', headline: '', about: '' });
       }
+
+      // Check same-line content
+      const match = t.match(/^(?:professional\s+)?headline\s*[:\-\s]+(.*)/i);
+      const sameLineContent = match ? match[1].trim() : '';
+      if (sameLineContent) {
+        const cleanedText = sameLineContent.replace(/^[\s\-\*—–_:]+/g, '').trim();
+        if (cleanedText) {
+          profiles[currentProfileIndex].headline += (profiles[currentProfileIndex].headline ? ' ' : '') + cleanedText;
+        }
+      }
       continue;
     }
 
     if (up.includes('ABOUT SECTION') || up === 'ABOUT') {
       currentSection = 'ABOUT';
-      // Reset index to 0 ONLY if we are in Case B (grouped lists under a single header).
+      
+      // Reset index to 0 ONLY if no abouts exist yet (Case B)
       const hasAbouts = profiles.some(p => p.about);
       if (!hasAbouts) {
         currentProfileIndex = 0;
       }
       if (profiles.length === 0) {
         profiles.push({ version: 'Version 1', headline: '', about: '' });
+      }
+
+      // Check same-line content
+      const match = t.match(/^about(?:\s+section)?\s*[:\-\s]+(.*)/i);
+      const sameLineContent = match ? match[1].trim() : '';
+      if (sameLineContent) {
+        const cleanedText = sameLineContent.replace(/^[\s\-\*—–_:]+/g, '').trim();
+        if (cleanedText) {
+          profiles[currentProfileIndex].about += (profiles[currentProfileIndex].about ? ' ' : '') + cleanedText;
+        }
       }
       continue;
     }
