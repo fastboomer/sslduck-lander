@@ -140,7 +140,7 @@ function parseAboutProfiles(raw: string): Parsed {
     }
   }
 
-  // Fallback: If no explicit match, try to look at first non-empty line
+  // Fallback for name
   if (!name && cleanLines.length > 0) {
     const firstLine = cleanLines[0].trim();
     if (firstLine.toLowerCase().includes('linkedin about profiles for')) {
@@ -152,10 +152,11 @@ function parseAboutProfiles(raw: string): Parsed {
     }
   }
 
-  let mode: 'HEADLINE' | 'ABOUT' | 'NOTES' | 'NONE' = 'NONE';
-  const rawHeadlines: string[] = [];
-  const rawAbouts: string[] = [];
+  const profiles: ProfileBlock[] = [];
+  let currentProfileIndex = -1;
+  let currentSection: 'HEADLINE' | 'ABOUT' | 'NONE' = 'NONE';
   const notesLines: string[] = [];
+  let inNotes = false;
 
   for (const line of cleanLines) {
     const t = line.trim();
@@ -165,21 +166,12 @@ function parseAboutProfiles(raw: string): Parsed {
 
     // Transition to notes
     if (/^(hi|hello|dear)\b/i.test(t)) {
-      mode = 'NOTES';
+      inNotes = true;
+      currentSection = 'NONE';
     }
 
-    if (mode === 'NOTES') {
+    if (inNotes) {
       notesLines.push(line);
-      continue;
-    }
-
-    // Section detections
-    if (up.includes('PROFESSIONAL HEADLINE') || up === 'HEADLINE') {
-      mode = 'HEADLINE';
-      continue;
-    }
-    if (up.includes('ABOUT SECTION') || up === 'ABOUT') {
-      mode = 'ABOUT';
       continue;
     }
 
@@ -188,67 +180,90 @@ function parseAboutProfiles(raw: string): Parsed {
       continue;
     }
 
-    // Collect text based on mode
-    if (mode === 'HEADLINE') {
-      if (/^(profile|version|alternative|variation)\s*\d+/i.test(t)) {
+    // Detect new version header boundary (Case A)
+    const profMatch = 
+      t.match(/^(profile|version|alternative|variation)\s*(\d+)/i) || 
+      (t.match(/^(\d+)[\.\)]\s*$/) && t.length < 5);
+      
+    if (profMatch) {
+      const num = parseInt(profMatch[2] || profMatch[1], 10);
+      if (num >= 1 && num <= 6) {
+        currentProfileIndex = num - 1;
+        currentSection = 'NONE';
+        while (profiles.length <= currentProfileIndex) {
+          profiles.push({ version: `Version ${profiles.length + 1}`, headline: '', about: '' });
+        }
         continue;
       }
-      rawHeadlines.push(t);
-    } else if (mode === 'ABOUT') {
-      if (/^(profile|version|alternative|variation)\s*\d+/i.test(t)) {
-        continue;
-      }
-      rawAbouts.push(t);
     }
-  }
 
-  // Clean headlines
-  const headlines: string[] = [];
-  for (const line of rawHeadlines) {
-    const cleaned = line
-      .replace(/^[\s\-\*—–_:]+/g, '')
-      .replace(/^(profile|version|alternative|variation|headline)\s*\d+[:\-\s]*/i, '')
-      .replace(/^\d+[\.\)]\s*/, '')
-      .trim();
-    if (cleaned) {
-      headlines.push(cleaned);
-    }
-  }
-
-  // Clean abouts
-  const abouts: string[] = [];
-  let currentAbout = '';
-  for (const line of rawAbouts) {
-    const cleanedLine = line.trim();
-    const isNewItem = 
-      /^(profile|version|alternative|variation|about)\s*\d+[:\-\s]*/i.test(cleanedLine) ||
-      /^\d+[\.\)]\s*/.test(cleanedLine);
-
-    if (isNewItem) {
-      if (currentAbout.trim()) {
-        abouts.push(currentAbout.trim());
+    // Detect section headers
+    if (up.includes('PROFESSIONAL HEADLINE') || up === 'HEADLINE') {
+      currentSection = 'HEADLINE';
+      currentProfileIndex = 0;
+      if (profiles.length === 0) {
+        profiles.push({ version: 'Version 1', headline: '', about: '' });
       }
-      currentAbout = cleanedLine
-        .replace(/^(profile|version|alternative|variation|about)\s*\d+[:\-\s]*/i, '')
-        .replace(/^\d+[\.\)]\s*/, '')
+      continue;
+    }
+
+    if (up.includes('ABOUT SECTION') || up === 'ABOUT') {
+      currentSection = 'ABOUT';
+      currentProfileIndex = 0;
+      if (profiles.length === 0) {
+        profiles.push({ version: 'Version 1', headline: '', about: '' });
+      }
+      continue;
+    }
+
+    // Collect content to the active profile block
+    if (currentSection !== 'NONE') {
+      const listMatch = t.match(/^(\d+)[\.\)]\s*(.*)/);
+      if (listMatch) {
+        // List-based boundary (Case B)
+        const num = parseInt(listMatch[1], 10);
+        if (num >= 1 && num <= 6) {
+          currentProfileIndex = num - 1;
+          while (profiles.length <= currentProfileIndex) {
+            profiles.push({ version: `Version ${profiles.length + 1}`, headline: '', about: '' });
+          }
+          const cleanedText = listMatch[2]
+            .replace(/^[\s\-\*—–_:]+/g, '')
+            .trim();
+          
+          if (cleanedText) {
+            const p = profiles[currentProfileIndex];
+            if (currentSection === 'HEADLINE') {
+              p.headline += (p.headline ? ' ' : '') + cleanedText;
+            } else if (currentSection === 'ABOUT') {
+              p.about += (p.about ? ' ' : '') + cleanedText;
+            }
+          }
+          continue;
+        }
+      }
+
+      // Standard content block
+      if (currentProfileIndex === -1) {
+        currentProfileIndex = 0;
+      }
+      while (profiles.length <= currentProfileIndex) {
+        profiles.push({ version: `Version ${profiles.length + 1}`, headline: '', about: '' });
+      }
+
+      const cleanedText = t
+        .replace(/^[\s\-\*—–_:]+/g, '')
         .trim();
-    } else {
-      currentAbout += (currentAbout ? '\n' : '') + cleanedLine;
+      
+      if (cleanedText) {
+        const p = profiles[currentProfileIndex];
+        if (currentSection === 'HEADLINE') {
+          p.headline += (p.headline ? ' ' : '') + cleanedText;
+        } else if (currentSection === 'ABOUT') {
+          p.about += (p.about ? ' ' : '') + cleanedText;
+        }
+      }
     }
-  }
-  if (currentAbout.trim()) {
-    abouts.push(currentAbout.trim());
-  }
-
-  // Match them up
-  const profilesCount = Math.max(headlines.length, abouts.length);
-  const profiles: ProfileBlock[] = [];
-  for (let i = 0; i < profilesCount; i++) {
-    profiles.push({
-      version: `Version ${i + 1}`,
-      headline: headlines[i] || '',
-      about: abouts[i] || '',
-    });
   }
 
   // Clean notes
