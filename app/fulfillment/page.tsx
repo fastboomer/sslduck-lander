@@ -73,9 +73,9 @@ const tools = [
     title: 'LinkedIn About Profile',
     description: 'The About section is an opportunity to humanize your experience by bridging past achievements and future ambitions, creating clarity and confidence in who you really are.',
     icon: '🖊️',
-    href: null,
+    href: '/fulfillment/linkedin-about',
     cta: 'Launch',
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     id: 'resume-early',
