@@ -8,11 +8,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { priceId, email, firstName, planType } = body;
+    const { priceId, email, firstName, planType, successPath } = body;
 
     if (!priceId) {
       return NextResponse.json({ error: 'Missing priceId' }, { status: 400 });
     }
+
+    const targetPath = successPath || '/fulfillment/gap-analysis/purchase-success';
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -25,7 +27,7 @@ export async function POST(req: NextRequest) {
         first_name: firstName || '',
       },
       // After payment, send to the welcome + upsell page
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/fulfillment/gap-analysis/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}${targetPath}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/`,
     });
 

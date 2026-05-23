@@ -22,18 +22,21 @@ export const PostGloClose: React.FC<PostGloCloseProps> = ({ firstName, email }) 
         window.addEventListener('pageshow', handlePageShow);
         return () => window.removeEventListener('pageshow', handlePageShow);
     }, []);
-
     const handleCheckout = async (priceId: string) => {
         setLoadingId(priceId);
 
         // Safety timeout — reset after 12s in case redirect never fires
         const timeout = setTimeout(() => setLoadingId(null), 12000);
 
+        const successPath = typeof window !== 'undefined' && window.location.pathname.includes('/gap')
+            ? '/gap/purchase-success'
+            : '/fulfillment/gap-analysis/purchase-success';
+
         try {
             const res = await fetch('/api/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ priceId, email, firstName })
+                body: JSON.stringify({ priceId, email, firstName, successPath })
             });
             const data = await res.json();
             if (data.url) {
