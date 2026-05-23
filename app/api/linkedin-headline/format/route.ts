@@ -149,11 +149,17 @@ function parseHeadlineProfiles(raw: string): Parsed {
     }
 
     // Check for VERSION boundaries
-    const versionMatch = t.match(/^(version|headline|alternative|variation|profile)\s*(\d+)/i) ||
-      (t.match(/^(\d+)[\.\)]\s*$/) && t.length < 5);
+    const versionMatch = t.match(/^(version|headline|alternative|variation|profile)\s*(\d+)/i);
+    const fallbackMatch = !versionMatch ? t.match(/^(\d+)[\.\)]\s*$/) : null;
 
     if (versionMatch) {
       const num = parseInt(versionMatch[2] || versionMatch[1], 10);
+      if (num >= 1 && num <= 5) {
+        currentVersion = num;
+      }
+      continue;
+    } else if (fallbackMatch && t.length < 5) {
+      const num = parseInt(fallbackMatch[1], 10);
       if (num >= 1 && num <= 5) {
         currentVersion = num;
       }

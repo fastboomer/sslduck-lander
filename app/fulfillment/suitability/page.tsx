@@ -4,52 +4,68 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Prompt Template ───────────────────────────────────────────────────────────
-// Address of the prompt: app/fulfillment/linkedin-headline/page.tsx
 const PROMPT_TEMPLATE = `[STRICT OUTPUT RULE - NO AI INTRO, PREAMBLE, OR META-COMMENTS]
-You MUST NOT output any conversational introduction, commentary, preamble, or meta-notes. Under no circumstances should you note any conflicts between formatting instructions and the plain-text directive. All formatting specifications represent target layout markers for our downstream parser; understand this and proceed directly to outputting the LinkedIn Headlines without explanation. Your response MUST start IMMEDIATELY with the title "LinkedIn Headlines for [first_name last_name]".
-
-[STRICT LENGTH CONTROL RULE]
-Each of the 5 LinkedIn Headlines MUST be under 220 characters. Ensure high impact and professional formatting. You must count characters and ensure each version stays strictly under the 220-character limit.
+You MUST NOT output any conversational introduction, commentary, preamble, or meta-notes. Under no circumstances should you note any conflicts between formatting instructions and the plain-text directive. All formatting specifications (font sizes, centering, bolding) represent target layout markers for our downstream parser; understand this and proceed directly to outputting the Applicant Suitability Study report without explanation. Your response MUST start IMMEDIATELY with the H2 Title Page header: "Applicant Suitability Study for [first_name] [last_name], [job_title], [company]".
 
 [OUTPUT CONTROL INSTRUCTIONS]
 [FORMATTING INSTRUCTION CLARIFICATION]
-You are a text-generating AI model. You must output ONLY clean, 100% plain text. Do NOT attempt to produce actual rich text, HTML, RTF, or markdown formatting (do NOT use asterisks ** or __ for bold, or * or _ for italics, or # for headings). 
-The formatting specifications in this prompt are instructions for the downstream parsing engine that will convert your plain text output into a Word Document. 
-To satisfy these specifications, simply structure your plain text output according to the layout rules (e.g., using exact headers like "VERSION 1:" etc.). The parser will handle applying the bolding, font sizes, alignments, and fonts in the final Word Document. 
+You are a text-generating AI model. You must output ONLY clean, 100% plain text. Do NOT attempt to produce actual rich text, HTML, RTF, or markdown formatting (do NOT use asterisks ** or __ for bold, or * or _ for italics, or # for headings) except for the use of pipe characters "|" to represent structure for our Markdown Table Parser. 
+The formatting specifications in this prompt (such as "Arial, 11pt, centered, bold", "Arial 10pt", "H2 title", etc.) are instructions for the downstream parsing engine that will convert your plain text output into a Word Document. 
+To satisfy these specifications, simply structure your plain text output according to the layout rules (e.g., using exact headers, separating items by blank lines, keeping lists on separate lines). The parser will handle applying the bolding, font sizes, alignments, and fonts in the final Word Document. 
 Your output must be 100% plain text, without any HTML tags, RTF tags, or markdown stars/underscores.
 
 PROMPT:
-SYSTEM INSTRUCTIONS: You are responding as a friendly, professional, highly experienced career adviser, and expert LinkedIn writer.
+SYSTEM INSTRUCTIONS: You are responding as a friendly, highly experienced professional career advancement counselor and resume expert. Let's think step by step, combined with a ReAct strategy.
 
-BACKGROUND: I have included in this prompt a resume placed between <resume> and </resume>; I have also included target job description between <job_description> and </job_description> which you will carefully analyze.
+BACKGROUND:
+I have pasted the resume between <resume> and </resume>, and a target Job Description between <job_description> and </job_description>.
 
-TASK: Using the resume and job description provided, create 5 optimized LinkedIn "Professional Headlines" in similar but different versions (e.g. one keyword-rich, one outcome-driven, one hybrid/creative).
-Length: Each headline MUST be under 220 characters.
+YOUR TASK:
+Carefully read the resume and the target Job Description and then prepare the following report:
 
-FORMAT: Please display the title: "LinkedIn Headlines for [first_name last_name]"
-Then, create 5 LinkedIn Headlines clearly separated as:
-VERSION 1
-[Headline 1 text]
+Begin report: H2 Title page, bold, “Applicant Suitability Study for [first_name] [last_name], [job_title], [company]”
+blank line; 
 
-VERSION 2
-[Headline 2 text]
+Begin table1, centered, with title, Arial, 11pt, centered, bold: “Hard and Soft Skills Analysis” structured as follows: All column entries are left justified. 
 
-VERSION 3
-[Headline 3 text]
+The table will report skills grouped as follows: Label, Arial, 11pt, bold, column1: “Resume Hard Skills”; in this column list all hard skills that appear on the resume, one item per line - Arial 10pt, 
+next column: Label, Arial, 11pt, bold, column 2: “Resume Soft Skills” and list all soft skills that appear on the resume, one item per line - Arial 10pt.
+Use standard markdown table syntax with "|" to format this table.
 
-VERSION 4
-[Headline 4 text]
+DEFINITION and EXAMPLE of hard and soft skills:
+Hard skills refer to specific, measurable abilities or technical knowledge that can be learned through training, education, or experience, and are directly related to performing the tasks of a particular job, like programming languages, data analysis, accounting software proficiency, or fluency in a foreign language. Essentially, they are the tangible skills that can be easily verified and assessed, unlike "soft skills" which focus more on personal attributes like communication or teamwork.
+Soft skills refer to personal attributes and interpersonal abilities that describe how someone interacts with others and works in a professional setting, including qualities like communication, teamwork, adaptability, problem-solving, leadership, critical thinking, and time management, as opposed to technical or hard skills specific to a job role. 
+<blank line>
 
-VERSION 5
-[Headline 5 text]
+Next, analyze Job Description located between <job_description> and </job_description> and note all job requirements including required hard and soft skills, years of experience, and include any job requirements for experience with specific tools or job functions. You will be preparing a detailed list.  
+<blank line>
+Begin table2, centered, with title, Arial, 11pt, centered, bold: “Job Requirements for [job_title], [company]” structured as follows: All column entries are left justified, Arial 10pt. Use standard markdown table syntax with "|" to format this table.
+ 
+You will be reporting comprehensive hard and soft skills, and any other requirements grouped as follows: please display one item per line: column 1, label “Job Requirements” list one requirement per line, then in column 2, label [first_name] [last_name] and list in column 2 across from each column 1 job requirement, a check mark "✓" if the corresponding skill or experience are present in the resume, and across from any column1 requirement not appearing on the resume, display “MISSING”
+<page break>
 
-CLOSING: After completing the 5 Headlines, finish by writing a personalized closing section:
-- Start with a personal greeting: "Hi first_name!"
-- Next, explain the strategy of each headline in exactly 5 distinct paragraphs (one paragraph for each version). Each paragraph MUST start on a new line and begin explicitly with the label "Version X:" (where X is 1 to 5).
-- Finish by wishing them all success in their job search.
-Use this signature:
-Wishing you all the best,
+Prepare 2 column table, title, center H2: KEYWORDS
+Column1 label, Arial 11pt bold “Job Description Keywords” and label column 2 “Resume”. Use standard markdown table syntax with "|" to format this table.
+List keywords representing hard and soft skills from the Job Description, in column1 and write MISSING in column 2 across from any keywords not in resume 
+Below the table, leave blank line then display the following exact warning: “WARNING Although the keywords identified are important to include, they should not be added unless they are truly representative of your skills and/or interests. If your resume is tagged for “keyword stuffing” it may end up in the REJECTED pile!”  
+<page break>
+Begin new page with H2 title: “Probable ATS Diagnosis”
+<blank line>
+This requires candor and insight. The objective is to help the applicant understand how well they are suited to the opportunity represented by the job description. We will do this by discussing in-depth the following areas: 
+
+Start paragraph with Arial, 11pt bold “ATS and Your Resume.” Explain that many ATS systems are exact match tools, meaning they are sensitive to specific keywords. Based on the example job description, the client [first_name] should make sure their resume has not inadvertently omitted any items marked as missing in the Job Requirements report that should be in their resume.  
+
+Explain ATS is typically set to score 0 to 90, and looks for candidates in the 65-85 range, with a pass/fail threshold of 60. Estimate where you believe they score.
+
+SUMMARY Please write a summary, titled “A final note…” minimum 150 words, more is ok. Begin with “Hi [first_name]! Classify the match between the resume and the job description as low, medium or high in terms of the resume holder’s suitability and determine if they appear to be a good fit for the job. Do not flatter. In order to help the user, if they are a great fit, then explain why. If they are a bad fit, give them ideas for better possibilities. Continue by discussing the type of job based on the resume, the holder is best suited for and list 5 alternate possibilities. Conclude with a statement of positive encouragement.
+<blank line>
+Signature:
+Wishing you the best,
 Glo
+
+IMPORTANT: DO NOT QUOTE SOURCES.
+DO NOT OFFER FURTHER HELP SUCH AS WRITING THE PROFESSIONAL PROFILE, ETC. 
+IMPORTANT Please do not request further input and please create this entire task without pause in one go.
 `;
 
 // ── File reading helpers ──────────────────────────────────────────────────────
@@ -72,7 +88,6 @@ async function readPdfFile(file: File): Promise<string> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     text += content.items.map((item: any) => item.str ?? '').join(' ') + '\n';
   }
   return text;
@@ -145,7 +160,8 @@ function FileInput({
   );
 }
 
-export default function LinkedInHeadlinePage() {
+// ── Main Page Component ───────────────────────────────────────────────────────
+export default function SuitabilityPage() {
   const router = useRouter();
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -161,107 +177,12 @@ export default function LinkedInHeadlinePage() {
   const [downloading, setDownloading] = useState(false);
   const [dlError, setDlError] = useState('');
 
-  interface LengthCheckResult {
-    version: number;
-    charCount: number;
-    exceeded: boolean;
-  }
-  const [warnings, setWarnings] = useState<LengthCheckResult[]>([]);
-
   // Reset copied state after 2.5 s
   useEffect(() => {
     if (!copied) return;
     const t = setTimeout(() => setCopied(false), 2500);
     return () => clearTimeout(t);
   }, [copied]);
-
-  // Client-side length validation hook for headlines
-  useEffect(() => {
-    if (!llmOutput.trim()) {
-      setWarnings([]);
-      return;
-    }
-
-    let text = llmOutput
-      .replace(/<(div|p|br|h[1-6]|section|article|header)[^>]*>/gi, '\n')
-      .replace(/<\/(div|p|h[1-6]|section|article|header)>/gi, '\n')
-      .replace(/<[^>]+>/g, '');
-
-    const rawLines = text.split('\n');
-    const cleanLines: string[] = [];
-
-    for (const line of rawLines) {
-      let t = line.replace(/[\xa0\u200b\u200c\u200d\ufeff\t]+/g, ' ').trim();
-      if (/^```[a-zA-Z0-9]*\s*$/.test(t)) continue;
-      t = t.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-      if (
-        t.toLowerCase().includes('page break') ||
-        t.toLowerCase().includes('page breaks') ||
-        /^[-*_\s—–|*~=\[\]]*page\s*(\d+|break|breaks)[-*_\s—–|*~=\[\]]*$/i.test(t)
-      ) {
-        continue;
-      }
-      if (/^[-\s_—–|*~=]+$/.test(t)) continue;
-      t = t.replace(/^#+\s+/, '');
-      t = t.replace(/\*\*|__/g, '');
-      t = t.replace(/\*(?!\s)([^*]+)\*/g, '$1');
-      t = t.replace(/_(?!\s)([^_]+)_/g, '$1');
-      if (t.startsWith('*') && !t.startsWith('* ')) t = t.slice(1);
-      if (t.endsWith('*') && !t.endsWith(' *')) t = t.slice(0, -1);
-      if (t.startsWith('_') && !t.startsWith('_ ')) t = t.slice(1);
-      if (t.endsWith('_') && !t.endsWith(' _')) t = t.slice(0, -1);
-      const cleaned = t.trim();
-      if (cleaned) cleanLines.push(cleaned);
-    }
-
-    const headlinesTexts: string[] = ['', '', '', '', ''];
-    let currentVersion = 0;
-    let inNotes = false;
-
-    for (const line of cleanLines) {
-      const t = line.trim();
-      if (!t) continue;
-
-      if (/^(hi|hello|dear)\b/i.test(t)) {
-        inNotes = true;
-      }
-      if (inNotes) continue;
-      if (t.toLowerCase().includes('linkedin headlines for')) continue;
-
-      const vMatch1 = t.match(/^(version|headline|alternative|variation|profile)\s*(\d+)/i);
-      const vMatch2 = t.length < 5 ? t.match(/^(\d+)[\.\)]\s*$/) : null;
-      const versionMatch = vMatch1 || vMatch2;
-
-      if (versionMatch) {
-        const num = parseInt(versionMatch[2] || versionMatch[1], 10);
-        if (num >= 1 && num <= 5) {
-          currentVersion = num;
-        }
-        continue;
-      }
-
-      if (currentVersion >= 1 && currentVersion <= 5) {
-        const cleanedText = t.replace(/^[\s\-\*—–_:]+/g, '').trim();
-        if (cleanedText) {
-          headlinesTexts[currentVersion - 1] += (headlinesTexts[currentVersion - 1] ? ' ' : '') + cleanedText;
-        }
-      }
-    }
-
-    const results: LengthCheckResult[] = [];
-    for (let i = 0; i < 5; i++) {
-      const val = headlinesTexts[i].trim();
-      if (val) {
-        const charCount = val.length;
-        results.push({
-          version: i + 1,
-          charCount,
-          exceeded: charCount > 220
-        });
-      }
-    }
-    setWarnings(results);
-  }, [llmOutput]);
 
   const handleCombine = async () => {
     if (!resumeFile || !jobDescText.trim()) {
@@ -277,12 +198,12 @@ export default function LinkedInHeadlinePage() {
 
       setOutput(finalPrompt);
 
-      // Automatically copy to clipboard
+      // Automatically copy to clipboard for convenience
       try {
         await navigator.clipboard.writeText(finalPrompt);
         setCopied(true);
       } catch {
-        // Silently catch clipboard blocking
+        // Fallback silently if clipboard blocked
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -727,217 +648,199 @@ export default function LinkedInHeadlinePage() {
       `}</style>
 
       <div className="r3-page">
-        {/* Nav */}
+
+        {/* ── Nav ─────────────────────────────────────────────────────── */}
         <nav className="r3-nav">
-        <a href="https://sslduck-lander.vercel.app" className="r3-nav-logo">
-          <img src="/logo.png" alt="SSLDuck Logo" className="r3-nav-logo-img" />
-          <div className="r3-nav-logo-text">
-            <span className="r3-nav-logo-name">SSLDUCK</span>
-            <span className="r3-nav-logo-tagline">VERSION 12-PRO</span>
-          </div>
-        </a>
-        <button className="r3-nav-back" onClick={() => router.push('/fulfillment')}>
-          ← Back to Suite
-        </button>
-      </nav>
+          <a href="https://sslduck-lander.vercel.app" className="r3-nav-logo">
+            <img src="/logo.png" alt="SSLDuck Logo" className="r3-nav-logo-img" />
+            <div className="r3-nav-logo-text">
+              <span className="r3-nav-logo-name">SSLDUCK</span>
+              <span className="r3-nav-logo-tagline">VERSION 12-PRO</span>
+            </div>
+          </a>
+          <button className="r3-nav-back" onClick={() => router.push('/fulfillment')}>
+            ← Back to Suite
+          </button>
+        </nav>
 
-      {/* Body */}
-      <div className="r3-body">
-        {/* Page Header */}
-        <div className="r3-header">
-          <p className="r3-header-eyebrow">AI Career Suite · LinkedIn Headline Tool</p>
-          <h1>LinkedIn Headline Generator</h1>
-          <p className="r3-header-sub">
-            Upload your resume and your target job description. Click <strong>Combine Documents</strong> to bundle everything into a specialized LinkedIn Headline prompt, copy it to your clipboard, and paste it into your favorite LLM.
-          </p>
-        </div>
+        {/* ── Body ────────────────────────────────────────────────────── */}
+        <div className="r3-body">
 
-        {/* Input Card */}
-        <div className="r3-card">
-          <p className="r3-card-title">Step 1 — Upload Your Documents</p>
-
-          <div className="r3-field">
-            <label className="r3-label" htmlFor="r3-model">
-              Select AI Model <span className="r3-required">*</span>
-            </label>
-            <select
-              id="r3-model"
-              className="r3-select"
-              value={model}
-              onChange={(e) => setModel(e.target.value as 'default' | 'gemini')}
-            >
-              <option value="default">Claude / ChatGPT / Other</option>
-              <option value="gemini">Google Gemini</option>
-            </select>
+          {/* Page Header */}
+          <div className="r3-header">
+            <p className="r3-header-eyebrow">AI Career Suite · Suitability Study Tool</p>
+            <h1>Suitability Study &amp; Job Options</h1>
+            <p className="r3-header-sub">
+              Upload your resume and target job description. Click <strong>Combine Documents</strong>, 
+              then copy the tailored prompt and paste it into your LLM of choice to generate an in-depth 
+              Applicant Suitability Study report with Skills analysis, Job requirements matrix, Keywords, 
+              ATS score estimate, and Glo&apos;s personal recommendations.
+            </p>
           </div>
 
-          <FileInput
-            id="r3-resume"
-            label="Current Resume"
-            required
-            onChange={setResumeFile}
-          />
-          <div className="r3-field">
-            <label className="r3-label" htmlFor="r3-jobdesc">
-              📂 COPY/PASTE TARGET JOB DESCRIPTION <span className="r3-required"> *</span>
-            </label>
-            <textarea
-              id="r3-jobdesc"
-              className="r3-textarea"
-              style={{
-                minHeight: '140px',
-                fontFamily: 'inherit',
-                fontSize: '13px',
-                backgroundColor: 'rgba(0,35,102,0.01)',
-                border: '1px solid rgba(0,35,102,0.25)',
-                borderRadius: '6px',
-                padding: '12px',
-                lineHeight: '1.5',
-                color: '#0f172a'
-              }}
-              value={jobDescText}
-              onChange={(e) => setJobDescText(e.target.value)}
-              placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
-              spellCheck={true}
+          {/* ── Input Card ──────────────────────────────────────────────── */}
+          <div className="r3-card">
+            <p className="r3-card-title">Step 1 — Upload Your Documents</p>
+
+            {/* Model selector */}
+            <div className="r3-field">
+              <label className="r3-label" htmlFor="r3-model">
+                Select AI Model <span className="r3-required">*</span>
+              </label>
+              <select
+                id="r3-model"
+                className="r3-select"
+                value={model}
+                onChange={(e) => setModel(e.target.value as 'default' | 'gemini')}
+              >
+                <option value="default">Claude / ChatGPT / Other</option>
+                <option value="gemini">Google Gemini</option>
+              </select>
+            </div>
+
+            <FileInput
+              id="r3-resume"
+              label="Current Resume"
+              required
+              onChange={setResumeFile}
             />
-          </div>
-        </div>
 
-        {error && <div className="r3-error">{error}</div>}
-
-        {/* Combine Button */}
-        <button
-          id="r3-combine-btn"
-          className="r3-combine-btn"
-          onClick={handleCombine}
-          disabled={processing}
-        >
-          {processing && <span className="r3-spinner" />}
-          {processing ? 'Processing...' : 'Combine Documents'}
-        </button>
-
-        {/* Output Card */}
-        <div className="r3-output-card">
-          <p className="r3-card-title">Step 2 — Copy &amp; Paste to Your AI</p>
-          <p className="r3-output-hint">
-            The window below contains your combined prompt. Click <strong>Copy to Clipboard</strong> then paste into your AI model window with <strong>Ctrl+V</strong>.
-          </p>
-          <textarea
-            id="r3-output"
-            className="r3-textarea"
-            value={output}
-            onChange={(e) => setOutput(e.target.value)}
-            placeholder="Your combined prompt will appear here after you click Combine Documents…"
-            spellCheck={false}
-          />
-        </div>
-
-        {/* Copy Button */}
-        <button
-          id="r3-copy-btn"
-          className={`r3-copy-btn${copied ? ' r3-copy-btn-success' : ''}`}
-          onClick={handleCopy}
-          disabled={!output}
-        >
-          {copied ? '✓ Copied to Clipboard!' : 'Copy to Clipboard'}
-        </button>
-
-        {/* Step 3: Format & Download */}
-        <div className="r3-step3-card">
-          <p className="r3-card-title">Step 3 — Format &amp; Download Word Doc</p>
-          <div className="r3-step3-tip">
-            <span className="r3-step3-tip-icon">💡</span>
-            <span>
-              After your AI returns the completed headlines, paste the full output below. Click <strong>Download as Word Document</strong> to receive a perfectly formatted <strong>.docx</strong> file with Arial font and standard layout.
-            </span>
+            <div className="r3-field">
+              <label className="r3-label" htmlFor="r3-jobdesc">
+                📂 COPY/PASTE TARGET JOB DESCRIPTION <span className="r3-required"> *</span>
+              </label>
+              <textarea
+                id="r3-jobdesc"
+                className="r3-textarea"
+                style={{
+                  minHeight: '140px',
+                  fontFamily: 'inherit',
+                  fontSize: '13px',
+                  backgroundColor: 'rgba(0,35,102,0.01)',
+                  border: '1px solid rgba(0,35,102,0.25)',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  lineHeight: '1.5',
+                  color: '#0f172a'
+                }}
+                value={jobDescText}
+                onChange={(e) => setJobDescText(e.target.value)}
+                placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
+                spellCheck={true}
+              />
+            </div>
           </div>
 
-          <div className="r3-field">
-            <label className="r3-label" htmlFor="r3-llm-output">
-              Paste AI Headline Output Here
-            </label>
+          {/* Error */}
+          {error && <div className="r3-error">{error}</div>}
+
+          {/* Combine Button */}
+          <button
+            id="r3-combine-btn"
+            className="r3-combine-btn"
+            onClick={handleCombine}
+            disabled={processing}
+          >
+            {processing && <span className="r3-spinner" />}
+            {processing ? 'Processing...' : 'Combine Documents'}
+          </button>
+
+          {/* ── Output Card ─────────────────────────────────────────────── */}
+          <div className="r3-output-card">
+            <p className="r3-card-title">Step 2 — Copy &amp; Paste to Your AI</p>
+            <p className="r3-output-hint">
+              The window below contains your combined prompt. Click{' '}
+              <strong>Copy to Clipboard</strong> then paste into your AI model window with{' '}
+              <strong>Ctrl+V</strong>.
+            </p>
             <textarea
-              id="r3-llm-output"
+              id="r3-output"
               className="r3-textarea"
-              style={{ minHeight: '340px' }}
-              value={llmOutput}
-              onChange={(e) => setLlmOutput(e.target.value)}
-              placeholder="Paste the full headline text returned by your AI model here…"
+              value={output}
+              onChange={(e) => setOutput(e.target.value)}
+              placeholder="Your combined prompt will appear here after you click Combine Documents…"
               spellCheck={false}
             />
           </div>
 
-          {/* Validation warnings display */}
-          {warnings.length > 0 && (
-            <div style={{ marginTop: '16px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {warnings.map((w) => (
-                <div
-                  key={w.version}
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    border: w.exceeded ? '1px solid #fecaca' : '1px solid #a7f3d0',
-                    backgroundColor: w.exceeded ? '#fef2f2' : '#ecfdf5',
-                    color: w.exceeded ? '#dc2626' : '#059669',
-                  }}
-                >
-                  <span>Version {w.version} Headline:</span>
-                  <span>{w.charCount} / 220 chars {w.exceeded ? '⚠️ Exceeds limit!' : '✓ Good Length'}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
+          {/* Copy Button */}
           <button
-            id="r3-download-btn"
-            className="r3-dl-btn"
-            disabled={!llmOutput.trim() || downloading}
-            onClick={async () => {
-              setDlError('');
-              setDownloading(true);
-              try {
-                const res = await fetch('/api/linkedin-headline/format', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ headlineText: llmOutput }),
-                });
-                if (!res.ok) {
-                  const e = await res.json();
-                  throw new Error(e.error || 'Server error');
-                }
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'linkedin_headlines.docx';
-                a.click();
-                URL.revokeObjectURL(url);
-              } catch (err: unknown) {
-                setDlError(err instanceof Error ? err.message : String(err));
-              } finally {
-                setDownloading(false);
-              }
-            }}
+            id="r3-copy-btn"
+            className={`r3-copy-btn${copied ? ' r3-copy-btn-success' : ''}`}
+            onClick={handleCopy}
+            disabled={!output}
           >
-            {downloading && <span className="r3-spinner" />}
-            {downloading ? 'Generating…' : '⬇ Download as Word Document'}
+            {copied ? '✓ Copied to Clipboard!' : 'Copy to Clipboard'}
           </button>
-          {dlError && <div className="r3-dl-error">{dlError}</div>}
-        </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="r3-footer">
-        © 2026 SSLDuck. All Rights Reserved.
-      </footer>
-    </div>
+          {/* ── Step 3: Format & Download ──────────────────────────────── */}
+          <div className="r3-step3-card">
+            <p className="r3-card-title">Step 3 — Format &amp; Download Word Doc</p>
+            <div className="r3-step3-tip">
+              <span className="r3-step3-tip-icon">💡</span>
+              <span>
+                After your AI returns the completed Suitability Study report, paste the full output below. Click <strong>Download as Word Document</strong> to receive a perfectly formatted <strong>.docx</strong> file with Arial font and standard layout.
+              </span>
+            </div>
+
+            <div className="r3-field">
+              <label className="r3-label" htmlFor="r3-llm-output">
+                Paste AI Suitability Study Output Here
+              </label>
+              <textarea
+                id="r3-llm-output"
+                className="r3-textarea"
+                style={{ minHeight: '340px' }}
+                value={llmOutput}
+                onChange={(e) => setLlmOutput(e.target.value)}
+                placeholder="Paste the full suitability study text returned by your AI model here…"
+                spellCheck={false}
+              />
+            </div>
+
+            <button
+              id="r3-download-btn"
+              className="r3-dl-btn"
+              disabled={!llmOutput.trim() || downloading}
+              onClick={async () => {
+                setDlError('');
+                setDownloading(true);
+                try {
+                  const res = await fetch('/api/suitability/format', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ suitabilityText: llmOutput }),
+                  });
+                  if (!res.ok) {
+                    const e = await res.json();
+                    throw new Error(e.error || 'Server error');
+                  }
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'suitability_study.docx';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch (err: unknown) {
+                  setDlError(err instanceof Error ? err.message : String(err));
+                } finally {
+                  setDownloading(false);
+                }
+              }}
+            >
+              {downloading && <span className="r3-spinner" />}
+              {downloading ? 'Generating…' : '⬇ Download as Word Document'}
+            </button>
+            {dlError && <div className="r3-dl-error">{dlError}</div>}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="r3-footer">
+          © 2026 SSLDuck. All Rights Reserved.
+        </footer>
+      </div>
     </>
   );
 }
-
-

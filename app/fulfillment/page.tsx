@@ -55,9 +55,9 @@ const tools = [
     title: 'Suitability Study & Job Options',
     description: 'See how well you measure up for your target job, and identify alternate jobs matching your profile.',
     icon: '🔍',
-    href: null,
+    href: '/fulfillment/suitability',
     cta: 'Launch',
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     id: 'linkedin-headline',
