@@ -295,9 +295,432 @@ function HeadlinesContent() {
   };
 
   return (
-    <div className="r3-page">
-      {/* Nav */}
-      <nav className="r3-nav">
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .r3-page {
+          min-height: 100vh;
+          background: #ffffff;
+          font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          color: #0f172a;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* ── Nav ───────────────────────────────── */
+        .r3-nav {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 40px;
+          border-bottom: 2px solid #002366;
+          background: #ffffff;
+          position: sticky;
+          top: 0;
+          z-index: 20;
+        }
+        .r3-nav-logo {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .r3-nav-logo-img {
+          height: 40px;
+          width: auto;
+        }
+        .r3-nav-logo-text {
+          display: flex;
+          flex-direction: column;
+        }
+        .r3-nav-logo-name {
+          font-size: 17px;
+          font-weight: 900;
+          color: #002366;
+          letter-spacing: -0.5px;
+          line-height: 1;
+          font-family: Georgia, serif;
+        }
+        .r3-nav-logo-tagline {
+          font-size: 8px;
+          font-weight: 700;
+          color: rgba(0,35,102,0.4);
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          margin-top: 2px;
+        }
+        .r3-nav-back {
+          background: none;
+          border: 2px solid #002366;
+          color: #002366;
+          font-size: 13px;
+          font-weight: 700;
+          padding: 7px 16px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s;
+          font-family: 'Inter', system-ui, sans-serif;
+        }
+        .r3-nav-back:hover { background: #002366; color: #ffffff; }
+
+        /* ── Body ──────────────────────────────── */
+        .r3-body {
+          max-width: 820px;
+          width: 100%;
+          margin: 0 auto;
+          padding: 52px 32px 80px;
+          flex-grow: 1;
+        }
+
+        /* ── Page Header ───────────────────────── */
+        .r3-header {
+          margin-bottom: 40px;
+        }
+        .r3-header-eyebrow {
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 2.5px;
+          text-transform: uppercase;
+          color: #475569;
+          margin-bottom: 12px;
+        }
+        .r3-header h1 {
+          font-size: clamp(1.8rem, 4vw, 2.8rem);
+          font-weight: 900;
+          color: #002366;
+          letter-spacing: -1px;
+          line-height: 1.1;
+          margin-bottom: 12px;
+        }
+        .r3-header-sub {
+          font-size: 1rem;
+          color: #475569;
+          line-height: 1.6;
+          font-weight: 500;
+          max-width: 600px;
+        }
+
+        /* ── Card ──────────────────────────────── */
+        .r3-card {
+          border: 2px solid #002366;
+          padding: 36px;
+          margin-bottom: 28px;
+          background: #ffffff;
+        }
+        .r3-card-title {
+          font-size: 13px;
+          font-weight: 800;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #002366;
+          margin-bottom: 24px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid rgba(0,35,102,0.15);
+        }
+
+        /* ── Form Fields ───────────────────────── */
+        .r3-field {
+          margin-bottom: 24px;
+        }
+        .r3-field:last-child { margin-bottom: 0; }
+        .r3-label {
+          display: block;
+          font-size: 13px;
+          font-weight: 700;
+          color: #002366;
+          margin-bottom: 8px;
+          letter-spacing: 0.2px;
+        }
+        .r3-required { color: #dc2626; }
+
+        .r3-file-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .r3-file-input {
+          flex: 1;
+          font-family: 'Inter', system-ui, sans-serif;
+          font-size: 13px;
+          color: #002366;
+          background: rgba(0,35,102,0.04);
+          border: 1px solid rgba(0,35,102,0.25);
+          border-radius: 6px;
+          padding: 9px 12px;
+          cursor: pointer;
+          transition: border-color 0.2s;
+        }
+        .r3-file-input:hover { border-color: #002366; }
+        .r3-file-input:focus { outline: 2px solid #002366; outline-offset: 2px; }
+        .r3-clear-btn {
+          background: none;
+          border: 1px solid #dc2626;
+          color: #dc2626;
+          font-size: 12px;
+          font-weight: 700;
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          cursor: pointer;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s;
+        }
+        .r3-clear-btn:hover { background: #fee2e2; }
+        .r3-filename {
+          display: block;
+          font-size: 11px;
+          color: #475569;
+          margin-top: 5px;
+          font-weight: 500;
+        }
+
+        /* ── Model selector ────────────────────── */
+        .r3-select {
+          width: 100%;
+          font-family: 'Inter', system-ui, sans-serif;
+          font-size: 13px;
+          font-weight: 600;
+          color: #002366;
+          background: rgba(0,35,102,0.04);
+          border: 1px solid rgba(0,35,102,0.25);
+          border-radius: 6px;
+          padding: 10px 12px;
+          cursor: pointer;
+          appearance: auto;
+          transition: border-color 0.2s;
+        }
+        .r3-select:hover { border-color: #002366; }
+        .r3-select:focus { outline: 2px solid #002366; outline-offset: 2px; }
+
+        /* ── Error ─────────────────────────────── */
+        .r3-error {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          padding: 12px 16px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #dc2626;
+          margin-bottom: 20px;
+        }
+
+        /* ── Action Buttons ────────────────────── */
+        .r3-combine-btn {
+          position: relative;
+          overflow: hidden;
+          width: 100%;
+          padding: 14px 28px;
+          background: linear-gradient(to bottom, #4DA3FF 0%, #006BFF 45%, #0047B3 100%);
+          color: #ffffff;
+          border: 1px solid #003A99;
+          border-radius: 10px;
+          font-size: 15px;
+          font-weight: 700;
+          font-family: 'Inter', system-ui, sans-serif;
+          text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 12px rgba(0,35,102,0.3);
+          cursor: pointer;
+          transition: all 0.2s;
+          margin-bottom: 28px;
+        }
+        .r3-combine-btn::before {
+          content: "";
+          position: absolute;
+          top: 0; left: 8%;
+          width: 84%; height: 45%;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,0.1));
+          border-radius: 10px 10px 50% 50%;
+          pointer-events: none;
+        }
+        .r3-combine-btn:hover:not(:disabled) {
+          background: linear-gradient(to bottom, #66B3FF 0%, #0077FF 45%, #0052CC 100%);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(0,35,102,0.4);
+          transform: translateY(-1px);
+        }
+        .r3-combine-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        /* ── Output ────────────────────────────── */
+        .r3-output-card {
+          border: 2px solid #002366;
+          padding: 28px 36px;
+          background: #ffffff;
+          margin-bottom: 16px;
+        }
+        .r3-output-hint {
+          font-size: 13px;
+          font-weight: 500;
+          color: #475569;
+          margin-bottom: 12px;
+          line-height: 1.5;
+        }
+        .r3-textarea {
+          width: 100%;
+          min-height: 280px;
+          resize: vertical;
+          border: 1px solid rgba(0,35,102,0.2);
+          border-radius: 6px;
+          padding: 14px;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 12px;
+          line-height: 1.6;
+          color: #1e293b;
+          background: rgba(0,35,102,0.02);
+          margin-bottom: 0;
+        }
+        .r3-textarea:focus { outline: 2px solid #002366; outline-offset: 2px; }
+
+        .r3-copy-btn {
+          position: relative;
+          overflow: hidden;
+          width: 100%;
+          padding: 14px 28px;
+          background: linear-gradient(to bottom, #4DA3FF 0%, #006BFF 45%, #0047B3 100%);
+          color: #ffffff;
+          border: 1px solid #003A99;
+          border-radius: 10px;
+          font-size: 15px;
+          font-weight: 700;
+          font-family: 'Inter', system-ui, sans-serif;
+          text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 12px rgba(0,35,102,0.3);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .r3-copy-btn::before {
+          content: "";
+          position: absolute;
+          top: 0; left: 8%;
+          width: 84%; height: 45%;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,0.1));
+          border-radius: 10px 10px 50% 50%;
+          pointer-events: none;
+        }
+        .r3-copy-btn:hover:not(:disabled) {
+          background: linear-gradient(to bottom, #66B3FF 0%, #0077FF 45%, #0052CC 100%);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(0,35,102,0.4);
+          transform: translateY(-1px);
+        }
+        .r3-copy-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .r3-copy-btn-success {
+          background: linear-gradient(to bottom, #34d399 0%, #059669 45%, #047857 100%) !important;
+          border-color: #065f46 !important;
+        }
+
+        /* ── Step 3 ─────────────────────────────── */
+        .r3-step3-card {
+          border: 2px solid #002366;
+          padding: 36px;
+          margin-top: 40px;
+          margin-bottom: 28px;
+          background: #ffffff;
+        }
+        .r3-step3-tip {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          background: rgba(0,35,102,0.04);
+          border: 1px solid rgba(0,35,102,0.15);
+          border-radius: 6px;
+          padding: 12px 14px;
+          margin-bottom: 16px;
+          font-size: 12px;
+          color: #475569;
+          line-height: 1.5;
+        }
+        .r3-step3-tip-icon { flex-shrink: 0; font-size: 15px; }
+        .r3-dl-btn {
+          position: relative;
+          overflow: hidden;
+          width: 100%;
+          padding: 14px 28px;
+          background: linear-gradient(to bottom, #4DA3FF 0%, #006BFF 45%, #0047B3 100%);
+          color: #ffffff;
+          border: 1px solid #003A99;
+          border-radius: 10px;
+          font-size: 15px;
+          font-weight: 700;
+          font-family: 'Inter', system-ui, sans-serif;
+          text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 12px rgba(0,35,102,0.3);
+          cursor: pointer;
+          transition: all 0.2s;
+          margin-top: 16px;
+        }
+        .r3-dl-btn::before {
+          content: "";
+          position: absolute;
+          top: 0; left: 8%;
+          width: 84%; height: 45%;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(255,255,255,0.1));
+          border-radius: 10px 10px 50% 50%;
+          pointer-events: none;
+        }
+        .r3-dl-btn:hover:not(:disabled) {
+          background: linear-gradient(to bottom, #66B3FF 0%, #0077FF 45%, #0052CC 100%);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(0,35,102,0.4);
+          transform: translateY(-1px);
+        }
+        .r3-dl-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .r3-dl-error {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          padding: 10px 14px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #dc2626;
+          margin-top: 12px;
+        }
+
+        /* ── Spinner ───────────────────────────── */
+        .r3-spinner {
+          display: inline-block;
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255,255,255,0.4);
+          border-top-color: #ffffff;
+          border-radius: 50%;
+          animation: r3spin 0.7s linear infinite;
+          vertical-align: middle;
+          margin-right: 8px;
+        }
+        @keyframes r3spin { to { transform: rotate(360deg); } }
+
+        /* ── Footer ────────────────────────────── */
+        .r3-footer {
+          border-top: 2px solid #002366;
+          padding: 20px 40px;
+          text-align: center;
+          font-size: 13px;
+          font-weight: 600;
+          color: #475569;
+        }
+
+        /* ── Responsive ────────────────────────── */
+        @media (max-width: 640px) {
+          .r3-nav { padding: 14px 20px; }
+          .r3-body { padding: 32px 16px 60px; }
+          .r3-card { padding: 24px 20px; }
+          .r3-output-card { padding: 20px; }
+          .r3-footer { padding: 20px; }
+        }
+      `}</style>
+
+      <div className="r3-page">
+        {/* Nav */}
+        <nav className="r3-nav">
         <a href="https://sslduck-lander.vercel.app" className="r3-nav-logo">
           <img src="/logo.png" alt="SSLDuck Logo" className="r3-nav-logo-img" />
           <div className="r3-nav-logo-text">
@@ -487,6 +910,7 @@ function HeadlinesContent() {
         © 2026 SSLDuck. All Rights Reserved.
       </footer>
     </div>
+    </>
   );
 }
 
