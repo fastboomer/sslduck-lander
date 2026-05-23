@@ -200,7 +200,12 @@ function parseAboutProfiles(raw: string): Parsed {
     // Detect section headers
     if (up.includes('PROFESSIONAL HEADLINE') || up === 'HEADLINE') {
       currentSection = 'HEADLINE';
-      currentProfileIndex = 0;
+      // Reset index to 0 ONLY if we are in Case B (grouped lists under a single header).
+      // If we are in Case A, other headlines are already populated, so we preserve the current index.
+      const hasHeadlines = profiles.some(p => p.headline);
+      if (!hasHeadlines) {
+        currentProfileIndex = 0;
+      }
       if (profiles.length === 0) {
         profiles.push({ version: 'Version 1', headline: '', about: '' });
       }
@@ -209,7 +214,11 @@ function parseAboutProfiles(raw: string): Parsed {
 
     if (up.includes('ABOUT SECTION') || up === 'ABOUT') {
       currentSection = 'ABOUT';
-      currentProfileIndex = 0;
+      // Reset index to 0 ONLY if we are in Case B (grouped lists under a single header).
+      const hasAbouts = profiles.some(p => p.about);
+      if (!hasAbouts) {
+        currentProfileIndex = 0;
+      }
       if (profiles.length === 0) {
         profiles.push({ version: 'Version 1', headline: '', about: '' });
       }
