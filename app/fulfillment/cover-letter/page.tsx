@@ -171,11 +171,29 @@ export default function CoverLetterPage() {
   const router = useRouter();
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [jobFile, setJobFile] = useState<File | null>(null);
   const [jobDescText, setJobDescText] = useState('');
   const [output, setOutput] = useState('');
   const [processing, setProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
+
+  const handleJobFileChange = async (file: File | null) => {
+    setJobFile(file);
+    if (file) {
+      try {
+        setError('');
+        const text = await readFile(file);
+        setJobDescText(text);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError('Error reading job description file: ' + msg);
+        setJobDescText('');
+      }
+    } else {
+      setJobDescText('');
+    }
+  };
 
   // Step 3 state
   const [llmOutput, setLlmOutput] = useState('');
@@ -598,9 +616,18 @@ export default function CoverLetterPage() {
               required
               onChange={setResumeFile}
             />
+
+            <div style={{ marginTop: '24px', marginBottom: '24px' }}>
+              <FileInput
+                id="cl-job-file"
+                label="Target Job Description (Optional File PDF, Word, or TXT)"
+                onChange={handleJobFileChange}
+              />
+            </div>
+
             <div className="cl-field">
               <label className="cl-label" htmlFor="cl-jobdesc">
-                📂 COPY/PASTE TARGET JOB DESCRIPTION <span className="cl-required"> *</span>
+                📂 PASTE OR REFINE TARGET JOB REQUIREMENTS <span className="cl-required"> *</span>
               </label>
               <textarea
                 id="cl-jobdesc"
@@ -618,7 +645,7 @@ export default function CoverLetterPage() {
                 }}
                 value={jobDescText}
                 onChange={(e) => setJobDescText(e.target.value)}
-                placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
+                placeholder="Paste the employer's complete job description here, or upload it as a file above and refine/edit the text here if needed."
                 spellCheck={true}
               />
             </div>
