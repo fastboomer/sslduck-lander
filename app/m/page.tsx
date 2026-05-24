@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { decompressFromEncodedURIComponent } from 'lz-string';
+import * as LZString from 'lz-string';
 
 // ── Mobile Content Component ──────────────────────────────────────────────────
 function MobileHandoffContent() {
@@ -21,7 +21,7 @@ function MobileHandoffContent() {
     }
 
     try {
-      const decompressed = decompressFromEncodedURIComponent(rawParam);
+      const decompressed = LZString.decompressFromEncodedURIComponent(rawParam);
       if (!decompressed) {
         throw new Error('Decompression resulted in empty data.');
       }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { extractTextFromFile } from '@/lib/extract-text';
-import { compressToEncodedURIComponent } from 'lz-string';
+import * as LZString from 'lz-string';
 import { QRCodeSVG } from 'qrcode.react';
 
 // ── FileInput Component ───────────────────────────────────────────────────────
@@ -141,7 +141,7 @@ Begin the interview now by introducing yourself and asking the first question.`;
     }
 
     const masterPrompt = getMasterPrompt(resumeText, jobText);
-    const compressed = compressToEncodedURIComponent(masterPrompt);
+    const compressed = LZString.compressToEncodedURIComponent(masterPrompt);
     setCompressedParam(compressed);
 
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://sslduck-lander.vercel.app';
