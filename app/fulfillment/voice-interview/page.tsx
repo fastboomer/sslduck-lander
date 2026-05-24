@@ -149,17 +149,17 @@ Begin the interview now by introducing yourself and asking the first question.`;
     const cleanJobText = jobText.replace(/\s+/g, ' ').trim();
 
     // Smart Content Pruning for Mobile QR Handoff Mode:
-    // We prune the resume to the first 3,500 characters (~1.2 pages of rich details containing the professional summary
-    // and newest, most important roles) and the job description to the first 2,000 characters (~0.7 pages of qualifications,
-    // dropping benefits and diversity policies). This mathematically guarantees the payload compresses well below the physical QR limit!
+    // We prune the resume to the first 1,600 characters (~250 words containing the professional summary
+    // and newest, most important roles) and the job description to the first 900 characters (~150 words containing the target job
+    // title and core qualifications). This creates an ultra-low-density QR code that scans instantly on any phone camera!
     let mobileResume = cleanResumeText;
     let mobileJob = cleanJobText;
 
-    if (mobileResume.length > 3500) {
-      mobileResume = mobileResume.slice(0, 3500) + '... [older experience truncated for mobile QR scan optimization]';
+    if (mobileResume.length > 1600) {
+      mobileResume = mobileResume.slice(0, 1600) + '... [older experience truncated for mobile QR scan optimization]';
     }
-    if (mobileJob.length > 2000) {
-      mobileJob = mobileJob.slice(0, 2000) + '... [disclaimers and benefits truncated for mobile QR scan optimization]';
+    if (mobileJob.length > 900) {
+      mobileJob = mobileJob.slice(0, 900) + '... [disclaimers and benefits truncated for mobile QR scan optimization]';
     }
 
     // To maximize QR space, we ONLY pack the optimized raw inputs joined by |||| in the QR payload.
