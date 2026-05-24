@@ -42,6 +42,15 @@ const tools = [
     comingSoon: false,
   },
   {
+    id: 'voice-interview',
+    title: 'Interactive Voice Interview - PC/Mobile',
+    description: 'Conduct hands-free verbal mock interviews using your phone or PC. Scan the QR code to load your custom-tailored hiring manager prompt directly into Gemini.',
+    icon: '🗣️',
+    href: '/fulfillment/voice-interview',
+    cta: 'Launch Tool',
+    comingSoon: false,
+  },
+  {
     id: 'gap-analysis',
     title: 'GAP Analysis & Actionable Advice',
     description: 'Goals And Profile of Target Company with actionable advice based on resume and job analysis.',
