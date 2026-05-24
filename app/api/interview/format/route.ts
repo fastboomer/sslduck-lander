@@ -26,6 +26,14 @@ const sectionHeaderP = (t: string) =>
     children: [new TextRun({ text: t, bold: true, size: S12, font: FONT })],
   });
 
+// Bold centred header for PART 1 / PART 2 dividers
+const partHeaderP = (t: string) =>
+  new Paragraph({
+    alignment: AlignmentType.LEFT,
+    spacing: { ...UNIFORM, before: 280, after: 120 },
+    children: [new TextRun({ text: t, bold: true, size: S12, font: FONT })],
+  });
+
 const questionP = (num: string, text: string) =>
   new Paragraph({
     alignment: AlignmentType.LEFT,
@@ -160,6 +168,12 @@ function buildDoc(rawText: string): Document {
     if (ansInline) {
       paras.push(answerLabelP());
       paras.push(bodyP(ansInline[1]));
+      continue;
+    }
+
+    // PART 1 / PART 2 section dividers
+    if (/^part\s*\d+\s*[:\-–—]/i.test(t) || /^(part one|part two)/i.test(t)) {
+      paras.push(partHeaderP(t));
       continue;
     }
 
