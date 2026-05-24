@@ -172,6 +172,7 @@ export default function CoverLetterPage() {
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jobFile, setJobFile] = useState<File | null>(null);
+  const [jobFileText, setJobFileText] = useState('');
   const [jobDescText, setJobDescText] = useState('');
   const [output, setOutput] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -184,14 +185,14 @@ export default function CoverLetterPage() {
       try {
         setError('');
         const text = await readFile(file);
-        setJobDescText(text);
+        setJobFileText(text);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         setError('Error reading job description file: ' + msg);
-        setJobDescText('');
+        setJobFileText('');
       }
     } else {
-      setJobDescText('');
+      setJobFileText('');
     }
   };
 
@@ -207,8 +208,9 @@ export default function CoverLetterPage() {
   }, [copied]);
 
   const handleCombine = async () => {
-    if (!resumeFile || !jobDescText.trim()) {
-      setError('Please upload your Resume and paste the Job Description.');
+    const finalJobText = jobFile ? jobFileText : jobDescText;
+    if (!resumeFile || !finalJobText.trim()) {
+      setError('Please upload your Resume and provide a Job Description (either by file upload or paste).');
       return;
     }
     setError('');
@@ -217,7 +219,7 @@ export default function CoverLetterPage() {
       const resumeText = await readFile(resumeFile);
 
       const finalPrompt =
-        `${COVER_LETTER_PROMPT}\n\nCANDIDATE RESUME:\n${resumeText}\n\nEND OF RESUME\n\nJOB DESCRIPTION:\n${jobDescText}`;
+        `${COVER_LETTER_PROMPT}\n\nCANDIDATE RESUME:\n${resumeText}\n\nEND OF RESUME\n\nJOB DESCRIPTION:\n${finalJobText}`;
 
       setOutput(finalPrompt);
     } catch (err: unknown) {
@@ -626,9 +628,14 @@ export default function CoverLetterPage() {
             </div>
 
             <div className="cl-field">
-              <label className="cl-label" htmlFor="cl-jobdesc">
-                📂 PASTE OR REFINE TARGET JOB REQUIREMENTS <span className="cl-required"> *</span>
+              <label className="cl-label" htmlFor="cl-jobdesc" style={{ opacity: jobFile ? 0.55 : 1 }}>
+                📂 PASTE OR REFINE TARGET JOB REQUIREMENTS {!jobFile && <span className="cl-required"> *</span>}
               </label>
+              {jobFile && (
+                <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: 500 }}>
+                  ℹ️ Job description uploaded as a file above. Clear the file to enable raw pasting instead.
+                </p>
+              )}
               <textarea
                 id="cl-jobdesc"
                 className="cl-textarea"
@@ -636,17 +643,20 @@ export default function CoverLetterPage() {
                   minHeight: '140px',
                   fontFamily: 'inherit',
                   fontSize: '13px',
-                  backgroundColor: 'rgba(0,35,102,0.01)',
+                  backgroundColor: jobFile ? '#f1f5f9' : 'rgba(0,35,102,0.01)',
                   border: '1px solid rgba(0,35,102,0.25)',
                   borderRadius: '6px',
                   padding: '12px',
                   lineHeight: '1.5',
-                  color: '#0f172a'
+                  color: jobFile ? '#64748b' : '#0f172a',
+                  opacity: jobFile ? 0.55 : 1,
+                  cursor: jobFile ? 'not-allowed' : 'text'
                 }}
-                value={jobDescText}
+                value={jobFile ? 'Target job description loaded via file upload.' : jobDescText}
                 onChange={(e) => setJobDescText(e.target.value)}
-                placeholder="Paste the employer's complete job description here, or upload it as a file above and refine/edit the text here if needed."
-                spellCheck={true}
+                placeholder={jobFile ? 'File uploaded above' : "Paste the employer's complete job description here..."}
+                spellCheck={!jobFile}
+                disabled={!!jobFile}
               />
             </div>
           </div>
