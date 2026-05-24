@@ -197,8 +197,17 @@ export default function ResumeStudentPage() {
   const router = useRouter();
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  
+  // New Information Dual Input States
   const [newInfoFile, setNewInfoFile] = useState<File | null>(null);
+  const [newInfoFileText, setNewInfoFileText] = useState('');
+  const [newInfoDescText, setNewInfoDescText] = useState('');
+
+  // Target Job Description Dual Input States
+  const [jobFile, setJobFile] = useState<File | null>(null);
+  const [jobFileText, setJobFileText] = useState('');
   const [jobDescText, setJobDescText] = useState('');
+
   const [model, setModel] = useState<'default' | 'gemini'>('default');
   const [output, setOutput] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -217,22 +226,60 @@ export default function ResumeStudentPage() {
     return () => clearTimeout(t);
   }, [copied]);
 
+  // File Change Handlers for Dual Inputs
+  const handleNewInfoFileChange = async (file: File | null) => {
+    setNewInfoFile(file);
+    if (file) {
+      try {
+        setError('');
+        const text = await readFile(file);
+        setNewInfoFileText(text);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError('Error reading new information file: ' + msg);
+        setNewInfoFileText('');
+      }
+    } else {
+      setNewInfoFileText('');
+    }
+  };
+
+  const handleJobFileChange = async (file: File | null) => {
+    setJobFile(file);
+    if (file) {
+      try {
+        setError('');
+        const text = await readFile(file);
+        setJobFileText(text);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError('Error reading job description file: ' + msg);
+        setJobFileText('');
+      }
+    } else {
+      setJobFileText('');
+    }
+  };
+
   const handleCombine = async () => {
-    if (!jobDescText.trim()) {
-      setError('Please paste the Target Job Description.');
+    const finalJobText = jobFile ? jobFileText : jobDescText;
+    const finalNewInfo = newInfoFile ? newInfoFileText : newInfoDescText;
+
+    if (!finalJobText.trim()) {
+      setError('Please provide the Target Job Description (either by file upload or copy/paste).');
       return;
     }
-    if (!resumeFile && !newInfoFile) {
-      setError('Please upload either an existing Resume or New Information (or both).');
+    if (!resumeFile && !finalNewInfo.trim()) {
+      setError('Please provide either an existing Resume (file upload) or New Information (file upload or copy/paste).');
       return;
     }
+
     setError('');
     setProcessing(true);
     try {
       const resumeText = resumeFile ? await readFile(resumeFile) : '';
-      const newInfoText = newInfoFile ? await readFile(newInfoFile) : '';
 
-      const finalPrompt = `${PROMPT_TEMPLATE}\n\n<input_1>\n${resumeText || 'No old resume provided (client has no prior resume).'}\n</input_1>\n\n<input_2>\n${newInfoText || 'No additional information provided.'}\n</input_2>\n\n<input_3>\n${jobDescText}\n</input_3>`;
+      const finalPrompt = `${PROMPT_TEMPLATE}\n\n<input_1>\n${resumeText || 'No old resume provided (client has no prior resume).'}\n</input_1>\n\n<input_2>\n${finalNewInfo || 'No additional information provided.'}\n</input_2>\n\n<input_3>\n${finalJobText}\n</input_3>`;
 
       setOutput(finalPrompt);
 
@@ -740,15 +787,65 @@ export default function ResumeStudentPage() {
               label="Resume (Optional)"
               onChange={setResumeFile}
             />
-            <FileInput
-              id="r3-newinfo"
-              label="New Information (Optional)"
-              onChange={setNewInfoFile}
-            />
+
+            <div style={{ marginTop: '24px', marginBottom: '24px' }}>
+              <FileInput
+                id="r3-newinfo-file"
+                label="New Information (Optional File PDF, Word, or TXT)"
+                onChange={handleNewInfoFileChange}
+              />
+            </div>
+
             <div className="r3-field">
-              <label className="r3-label" htmlFor="r3-jobdesc">
-                📂 COPY/PASTE TARGET JOB DESCRIPTION <span className="r3-required"> *</span>
+              <label className="r3-label" htmlFor="r3-newinfo-text" style={{ opacity: newInfoFile ? 0.55 : 1 }}>
+                Or Copy/Paste New Information (Optional)
               </label>
+              {newInfoFile && (
+                <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: 500 }}>
+                  ℹ️ New information uploaded as a file above. Clear the file to enable raw pasting instead.
+                </p>
+              )}
+              <textarea
+                id="r3-newinfo-text"
+                className="r3-textarea"
+                style={{
+                  minHeight: '100px',
+                  fontFamily: 'inherit',
+                  fontSize: '13px',
+                  backgroundColor: newInfoFile ? '#f1f5f9' : 'rgba(0,35,102,0.01)',
+                  border: '1px solid rgba(0,35,102,0.25)',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  lineHeight: '1.5',
+                  color: newInfoFile ? '#64748b' : '#0f172a',
+                  opacity: newInfoFile ? 0.55 : 1,
+                  cursor: newInfoFile ? 'not-allowed' : 'text'
+                }}
+                value={newInfoFile ? 'New information loaded via file upload.' : newInfoDescText}
+                onChange={(e) => setNewInfoDescText(e.target.value)}
+                placeholder={newInfoFile ? 'File uploaded above' : "Type or paste any new info, notes, coursework, or project achievements here..."}
+                spellCheck={!newInfoFile}
+                disabled={!!newInfoFile}
+              />
+            </div>
+
+            <div style={{ marginTop: '24px', marginBottom: '24px' }}>
+              <FileInput
+                id="r3-job-file"
+                label="Target Job Description (Optional File PDF, Word, or TXT)"
+                onChange={handleJobFileChange}
+              />
+            </div>
+
+            <div className="r3-field">
+              <label className="r3-label" htmlFor="r3-jobdesc" style={{ opacity: jobFile ? 0.55 : 1 }}>
+                📂 OR COPY/PASTE TARGET JOB DESCRIPTION {!jobFile && <span className="r3-required"> *</span>}
+              </label>
+              {jobFile && (
+                <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px', fontWeight: 500 }}>
+                  ℹ️ Job description uploaded as a file above. Clear the file to enable raw pasting instead.
+                </p>
+              )}
               <textarea
                 id="r3-jobdesc"
                 className="r3-textarea"
@@ -756,17 +853,20 @@ export default function ResumeStudentPage() {
                   minHeight: '140px',
                   fontFamily: 'inherit',
                   fontSize: '13px',
-                  backgroundColor: 'rgba(0,35,102,0.01)',
+                  backgroundColor: jobFile ? '#f1f5f9' : 'rgba(0,35,102,0.01)',
                   border: '1px solid rgba(0,35,102,0.25)',
                   borderRadius: '6px',
                   padding: '12px',
                   lineHeight: '1.5',
-                  color: '#0f172a'
+                  color: jobFile ? '#64748b' : '#0f172a',
+                  opacity: jobFile ? 0.55 : 1,
+                  cursor: jobFile ? 'not-allowed' : 'text'
                 }}
-                value={jobDescText}
+                value={jobFile ? 'Target job description loaded via file upload.' : jobDescText}
                 onChange={(e) => setJobDescText(e.target.value)}
-                placeholder="Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."
-                spellCheck={true}
+                placeholder={jobFile ? 'File uploaded above' : "Paste employer's complete job description here. PRO TIP: Make sure you include employer's name and complete job title."}
+                spellCheck={!jobFile}
+                disabled={!!jobFile}
               />
             </div>
           </div>
