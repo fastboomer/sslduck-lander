@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { extractTextFromFile } from '@/lib/extract-text';
 import * as LZString from 'lz-string';
-import QRCode from 'qrcode';
+import * as QRCode from 'qrcode';
 
 // ── FileInput Component ───────────────────────────────────────────────────────
 function FileInput({
