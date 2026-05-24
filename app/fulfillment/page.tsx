@@ -37,9 +37,9 @@ const tools = [
     title: 'Interview Prep AI',
     description: 'Practice with realistic interview simulations. Receive real-time feedback on your answers and delivery.',
     icon: '🎤',
-    href: null,
+    href: '/fulfillment/interview',
     cta: 'Launch',
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     id: 'gap-analysis',
