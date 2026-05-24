@@ -149,17 +149,17 @@ Begin the interview now by introducing yourself and asking the first question.`;
     const cleanJobText = jobText.replace(/\s+/g, ' ').trim();
 
     // Smart Content Pruning for Mobile QR Handoff Mode:
-    // We prune the resume to the first 5,500 characters (~2 full pages of modern text containing the professional summary
-    // and newest, most important roles) and the job description to the first 3,500 characters (~1.2 pages of qualifications,
-    // dropping benefits and diversity policies). This guarantees the payload compresses well below the physical QR limit!
+    // We prune the resume to the first 3,500 characters (~1.2 pages of rich details containing the professional summary
+    // and newest, most important roles) and the job description to the first 2,000 characters (~0.7 pages of qualifications,
+    // dropping benefits and diversity policies). This mathematically guarantees the payload compresses well below the physical QR limit!
     let mobileResume = cleanResumeText;
     let mobileJob = cleanJobText;
 
-    if (mobileResume.length > 5500) {
-      mobileResume = mobileResume.slice(0, 5500) + '... [older experience truncated for mobile QR scan optimization]';
+    if (mobileResume.length > 3500) {
+      mobileResume = mobileResume.slice(0, 3500) + '... [older experience truncated for mobile QR scan optimization]';
     }
-    if (mobileJob.length > 3500) {
-      mobileJob = mobileJob.slice(0, 3500) + '... [disclaimers and benefits truncated for mobile QR scan optimization]';
+    if (mobileJob.length > 2000) {
+      mobileJob = mobileJob.slice(0, 2000) + '... [disclaimers and benefits truncated for mobile QR scan optimization]';
     }
 
     // To maximize QR space, we ONLY pack the optimized raw inputs joined by |||| in the QR payload.
@@ -195,7 +195,7 @@ Begin the interview now by introducing yourself and asking the first question.`;
           if (err) {
             console.error('QR generation error:', err);
             setQrCodeDataUrl('');
-            setQrError('The resume and job description text is too detailed to fit inside a single QR code. Please shorten them slightly, or switch to the "Practice on PC" mode.');
+            setQrError(`QR Generation Error: ${err.message || String(err)}. Please shorten your text slightly, or switch to the "Practice on PC" mode.`);
           } else {
             setQrCodeDataUrl(url);
           }
