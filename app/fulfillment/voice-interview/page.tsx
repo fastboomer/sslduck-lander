@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { extractTextFromFile } from '@/lib/extract-text';
 import * as LZString from 'lz-string';
-import { QRCodeSVG } from 'qrcode.react';
+import QRCode from 'qrcode';
 
 // ── FileInput Component ───────────────────────────────────────────────────────
 function FileInput({
@@ -102,6 +102,7 @@ export default function VoiceInterviewPage() {
   // QR string states
   const [compressedParam, setCompressedParam] = useState('');
   const [qrUrl, setQrUrl] = useState('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [textStats, setTextStats] = useState({ originalLength: 0, compressedLength: 0 });
 
   // Reset copied status
@@ -136,6 +137,7 @@ Begin the interview now by introducing yourself and asking the first question.`;
     if (!resumeText.trim() || !jobText.trim()) {
       setCompressedParam('');
       setQrUrl('');
+      setQrCodeDataUrl('');
       setTextStats({ originalLength: 0, compressedLength: 0 });
       return;
     }
@@ -152,6 +154,27 @@ Begin the interview now by introducing yourself and asking the first question.`;
       originalLength: masterPrompt.length,
       compressedLength: compressed.length
     });
+
+    // Generate pure image-based Base64 Data URL for the QR code
+    QRCode.toDataURL(
+      finalQrUrl,
+      {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#002366',
+          light: '#FFFFFF'
+        }
+      },
+      (err, url) => {
+        if (err) {
+          console.error('QR generation error:', err);
+          setQrCodeDataUrl('');
+        } else {
+          setQrCodeDataUrl(url);
+        }
+      }
+    );
   }, [resumeText, jobText]);
 
   const handleCombineAndLaunchPC = async () => {
@@ -816,14 +839,21 @@ Begin the interview now by introducing yourself and asking the first question.`;
                 ) : (
                   <div className="iv-qr-container">
                     <div className="iv-qr-border">
-                      {qrUrl && (
-                        <QRCodeSVG
-                          value={qrUrl}
-                          size={280}
-                          bgColor="#FFFFFF"
-                          fgColor="#002366"
-                          level="M"
+                      {qrCodeDataUrl ? (
+                        <img
+                          src={qrCodeDataUrl}
+                          alt="Voice Interview Practice Mobile Handoff QR Code"
+                          style={{
+                            width: '280px',
+                            height: '280px',
+                            display: 'block',
+                            borderRadius: '8px'
+                          }}
                         />
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', height: '280px', justifyContent: 'center', width: '280px' }}>
+                          <span className="iv-spinner-small"></span> Generating secure QR code...
+                        </div>
                       )}
                     </div>
                     <div className="iv-qr-stats">
