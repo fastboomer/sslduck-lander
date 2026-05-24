@@ -148,9 +148,23 @@ Begin the interview now by introducing yourself and asking the first question.`;
     const cleanResumeText = resumeText.replace(/\s+/g, ' ').trim();
     const cleanJobText = jobText.replace(/\s+/g, ' ').trim();
 
-    // To maximize QR space, we ONLY pack the raw inputs joined by |||| in the QR payload.
+    // Smart Content Pruning for Mobile QR Handoff Mode:
+    // We prune the resume to the first 5,500 characters (~2 full pages of modern text containing the professional summary
+    // and newest, most important roles) and the job description to the first 3,500 characters (~1.2 pages of qualifications,
+    // dropping benefits and diversity policies). This guarantees the payload compresses well below the physical QR limit!
+    let mobileResume = cleanResumeText;
+    let mobileJob = cleanJobText;
+
+    if (mobileResume.length > 5500) {
+      mobileResume = mobileResume.slice(0, 5500) + '... [older experience truncated for mobile QR scan optimization]';
+    }
+    if (mobileJob.length > 3500) {
+      mobileJob = mobileJob.slice(0, 3500) + '... [disclaimers and benefits truncated for mobile QR scan optimization]';
+    }
+
+    // To maximize QR space, we ONLY pack the optimized raw inputs joined by |||| in the QR payload.
     // The mobile /m page will reconstruct the template instructions client-side!
-    const payload = `${cleanResumeText}||||${cleanJobText}`;
+    const payload = `${mobileResume}||||${mobileJob}`;
     
     try {
       const compressed = LZString.compressToEncodedURIComponent(payload);
@@ -160,7 +174,7 @@ Begin the interview now by introducing yourself and asking the first question.`;
       const finalQrUrl = `${baseUrl}/m?p=${compressed}`;
       setQrUrl(finalQrUrl);
 
-      // Record stats based on the FULL master prompt so the user sees correct final stats
+      // Record stats based on the FULL unpruned master prompt so the user sees correct final stats
       const fullPromptLength = getMasterPrompt(cleanResumeText, cleanJobText).length;
       setTextStats({
         originalLength: fullPromptLength,
@@ -169,8 +183,7 @@ Begin the interview now by introducing yourself and asking the first question.`;
 
       setQrError('');
 
-      // Generate base64 QR Code image
-      // We explicitly set errorCorrectionLevel to 'L' (Low - 7% error tolerance) to maximize stored character capacity up to ~2,953 binary bytes!
+      // Generate base64 QR Code image with Low error correction (L) to maximize space!
       QRCode.toDataURL(
         finalQrUrl,
         {
