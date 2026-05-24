@@ -103,6 +103,7 @@ export default function VoiceInterviewPage() {
   const [compressedParam, setCompressedParam] = useState('');
   const [qrUrl, setQrUrl] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [qrError, setQrError] = useState('');
   const [textStats, setTextStats] = useState({ originalLength: 0, compressedLength: 0 });
 
   // Reset copied status
@@ -138,43 +139,55 @@ Begin the interview now by introducing yourself and asking the first question.`;
       setCompressedParam('');
       setQrUrl('');
       setQrCodeDataUrl('');
+      setQrError('');
       setTextStats({ originalLength: 0, compressedLength: 0 });
       return;
     }
 
-    const masterPrompt = getMasterPrompt(resumeText, jobText);
-    const compressed = LZString.compressToEncodedURIComponent(masterPrompt);
-    setCompressedParam(compressed);
+    // Optimize characters by compressing multiple tabs, spaces and carriage returns to a single space
+    const cleanResumeText = resumeText.replace(/\s+/g, ' ').trim();
+    const cleanJobText = jobText.replace(/\s+/g, ' ').trim();
 
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://sslduck-lander.vercel.app';
-    const finalQrUrl = `${baseUrl}/m?p=${compressed}`;
-    setQrUrl(finalQrUrl);
+    const masterPrompt = getMasterPrompt(cleanResumeText, cleanJobText);
+    
+    try {
+      const compressed = LZString.compressToEncodedURIComponent(masterPrompt);
+      setCompressedParam(compressed);
 
-    setTextStats({
-      originalLength: masterPrompt.length,
-      compressedLength: compressed.length
-    });
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://sslduck-lander.vercel.app';
+      const finalQrUrl = `${baseUrl}/m?p=${compressed}`;
+      setQrUrl(finalQrUrl);
 
-    // Generate pure image-based Base64 Data URL for the QR code
-    QRCode.toDataURL(
-      finalQrUrl,
-      {
-        width: 300,
-        margin: 2,
-        color: {
-          dark: '#002366',
-          light: '#FFFFFF'
+      setTextStats({
+        originalLength: masterPrompt.length,
+        compressedLength: compressed.length
+      });
+
+      setQrError('');
+
+      // Generate base64 QR Code image
+      // We explicitly set errorCorrectionLevel to 'L' (Low - 7% error tolerance) to maximize stored character capacity up to ~2,953 binary bytes!
+      QRCode.toDataURL(
+        finalQrUrl,
+        {
+          width: 320,
+          margin: 1,
+          errorCorrectionLevel: 'L'
+        },
+        (err, url) => {
+          if (err) {
+            console.error('QR generation error:', err);
+            setQrCodeDataUrl('');
+            setQrError('The resume and job description text is too detailed to fit inside a single QR code. Please shorten them slightly, or switch to the "Practice on PC" mode.');
+          } else {
+            setQrCodeDataUrl(url);
+          }
         }
-      },
-      (err, url) => {
-        if (err) {
-          console.error('QR generation error:', err);
-          setQrCodeDataUrl('');
-        } else {
-          setQrCodeDataUrl(url);
-        }
-      }
-    );
+      );
+    } catch (err) {
+      console.error(err);
+      setQrError('Error preparing handoff data. Please shorten your documents slightly and try again.');
+    }
   }, [resumeText, jobText]);
 
   const handleCombineAndLaunchPC = async () => {
@@ -838,30 +851,39 @@ Begin the interview now by introducing yourself and asking the first question.`;
                   </div>
                 ) : (
                   <div className="iv-qr-container">
-                    <div className="iv-qr-border">
-                      {qrCodeDataUrl ? (
-                        <img
-                          src={qrCodeDataUrl}
-                          alt="Voice Interview Practice Mobile Handoff QR Code"
-                          style={{
-                            width: '280px',
-                            height: '280px',
-                            display: 'block',
-                            borderRadius: '8px'
-                          }}
-                        />
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', height: '280px', justifyContent: 'center', width: '280px' }}>
-                          <span className="iv-spinner-small"></span> Generating secure QR code...
-                        </div>
-                      )}
-                    </div>
-                    <div className="iv-qr-stats">
-                      Handoff Package size: {textStats.originalLength} chars (Compressed to {textStats.compressedLength} bytes)
-                    </div>
+                    {qrError ? (
+                      <div className="iv-error-alert" style={{ maxWidth: '440px', margin: '0 auto 20px', textAlign: 'left', lineHeight: '1.6' }}>
+                        {qrError}
+                      </div>
+                    ) : (
+                      <div className="iv-qr-border">
+                        {qrCodeDataUrl ? (
+                          <img
+                            src={qrCodeDataUrl}
+                            alt="Voice Interview Practice Mobile Handoff QR Code"
+                            style={{
+                              width: '280px',
+                              height: '280px',
+                              display: 'block',
+                              borderRadius: '8px'
+                            }}
+                          />
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', height: '280px', justifyContent: 'center', width: '280px' }}>
+                            <span className="iv-spinner-small"></span> Generating secure QR code...
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                    {textStats.compressedLength > 2900 && (
-                      <div className="iv-alert-banner">
+                    {!qrError && (
+                      <div className="iv-qr-stats">
+                        Handoff Package size: {textStats.originalLength} chars (Compressed to {textStats.compressedLength} bytes)
+                      </div>
+                    )}
+
+                    {!qrError && textStats.compressedLength > 2200 && (
+                      <div className="iv-alert-banner" style={{ maxWidth: '440px', margin: '16px auto 0' }}>
                         <span>ℹ️</span>
                         <span>
                           <strong>Pro Tip:</strong> Your resume or job description is very detailed. The QR code is dense but fully functional. When scanning, hold your phone steady about 10–12 inches back from the computer screen to let your camera scan it with ease.
