@@ -148,18 +148,22 @@ Begin the interview now by introducing yourself and asking the first question.`;
     const cleanResumeText = resumeText.replace(/\s+/g, ' ').trim();
     const cleanJobText = jobText.replace(/\s+/g, ' ').trim();
 
-    const masterPrompt = getMasterPrompt(cleanResumeText, cleanJobText);
+    // To maximize QR space, we ONLY pack the raw inputs joined by |||| in the QR payload.
+    // The mobile /m page will reconstruct the template instructions client-side!
+    const payload = `${cleanResumeText}||||${cleanJobText}`;
     
     try {
-      const compressed = LZString.compressToEncodedURIComponent(masterPrompt);
+      const compressed = LZString.compressToEncodedURIComponent(payload);
       setCompressedParam(compressed);
 
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://sslduck-lander.vercel.app';
       const finalQrUrl = `${baseUrl}/m?p=${compressed}`;
       setQrUrl(finalQrUrl);
 
+      // Record stats based on the FULL master prompt so the user sees correct final stats
+      const fullPromptLength = getMasterPrompt(cleanResumeText, cleanJobText).length;
       setTextStats({
-        originalLength: masterPrompt.length,
+        originalLength: fullPromptLength,
         compressedLength: compressed.length
       });
 
