@@ -98,6 +98,7 @@ export default function VoiceInterviewPage() {
   const [deviceMode, setDeviceMode] = useState<'pc' | 'mobile'>('pc');
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [mobileLinkCopied, setMobileLinkCopied] = useState(false);
 
   // QR string states
   const [compressedParam, setCompressedParam] = useState('');
@@ -112,6 +113,13 @@ export default function VoiceInterviewPage() {
     const t = setTimeout(() => setCopied(false), 3000);
     return () => clearTimeout(t);
   }, [copied]);
+
+  // Reset mobile link copied status
+  useEffect(() => {
+    if (!mobileLinkCopied) return;
+    const t = setTimeout(() => setMobileLinkCopied(false), 3000);
+    return () => clearTimeout(t);
+  }, [mobileLinkCopied]);
 
   // Master Prompt Constructor
   const getMasterPrompt = (resText: string, jobDText: string) => {
@@ -184,11 +192,13 @@ Begin the interview now by introducing yourself and asking the first question.`;
       setQrError('');
 
       // Generate base64 QR Code image with Low error correction (L) to maximize space!
+      // We set margin to 4 to establish a clean "quiet zone" around the QR code,
+      // which is required for smartphone camera scanners to detect its borders correctly!
       QRCode.toDataURL(
         finalQrUrl,
         {
           width: 320,
-          margin: 1,
+          margin: 4,
           errorCorrectionLevel: 'L'
         },
         (err, url) => {
@@ -896,6 +906,35 @@ Begin the interview now by introducing yourself and asking the first question.`;
                     {!qrError && (
                       <div className="iv-qr-stats">
                         Handoff Package size: {textStats.originalLength} chars (Compressed to {textStats.compressedLength} bytes)
+                      </div>
+                    )}
+
+                    {!qrError && (
+                      <div style={{ width: '100%', maxWidth: '320px', margin: '20px auto 0' }}>
+                        <button
+                          type="button"
+                          className="iv-primary-btn"
+                          style={{
+                            padding: '10px 20px',
+                            fontSize: '13.5px',
+                            background: mobileLinkCopied ? 'linear-gradient(to bottom, #34d399 0%, #059669 45%, #047857 100%)' : 'linear-gradient(to bottom, #4DA3FF 0%, #006BFF 45%, #0047B3 100%)',
+                            borderColor: mobileLinkCopied ? '#065f46' : '#003A99',
+                            boxShadow: 'none'
+                          }}
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(qrUrl);
+                              setMobileLinkCopied(true);
+                            } catch (e) {
+                              console.error('Failed to copy mobile link:', e);
+                            }
+                          }}
+                        >
+                          {mobileLinkCopied ? '✓ Mobile Link Copied!' : '🔗 Copy Mobile Handoff Link'}
+                        </button>
+                        <p style={{ fontSize: '11px', color: '#64748b', marginTop: '6px', lineHeight: '1.4' }}>
+                          Can&apos;t scan? Copy this link and paste it into Slack, Email, or WhatsApp Web to send to your phone!
+                        </p>
                       </div>
                     )}
 
