@@ -23,7 +23,7 @@ export const Hero: React.FC = () => {
                         href="#"
                         className="bg-white text-royal-blue border border-royal-blue px-8 py-4 rounded-full font-semibold hover:bg-royal-blue/5 transition-all text-center"
                     >
-                        Join Membership
+                        Subscribe <span className="italic font-normal">(free)</span>
                     </a>
                 </div>
 
