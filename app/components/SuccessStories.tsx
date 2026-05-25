@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 const testimonials = [
     {
@@ -38,9 +39,20 @@ export const SuccessStories: React.FC = () => {
                     <h2 className="text-3xl md:text-5xl font-bold text-royal-blue tracking-tight mb-4">
                         Stop Losing Jobs You're Actually Qualified For!
                     </h2>
-                    <p className="text-xl md:text-2xl text-royal-blue/70 italic">
+                    <p className="text-xl md:text-2xl text-royal-blue/70 italic mb-6">
                         "Here is exactly why you need our free GAP Analysis:"
                     </p>
+                    <div className="mt-6">
+                        <h3 className="text-2xl md:text-3xl font-bold text-royal-blue mb-2">
+                            What is a 3 Stage GAP Analysis?
+                        </h3>
+                        <Link
+                            href="/articles?article=3"
+                            className="text-lg md:text-xl text-royal-blue/70 italic hover:text-royal-blue transition-colors underline decoration-royal-blue/20 underline-offset-4"
+                        >
+                            Audit, Translation, and Injection explained.
+                        </Link>
+                    </div>
                 </motion.div>
 
                 {/* Testimonial Grid */}

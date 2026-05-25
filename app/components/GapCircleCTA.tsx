@@ -7,7 +7,7 @@ import Link from 'next/link';
 export const GapCircleCTA: React.FC = () => {
     return (
         <div className="flex justify-center items-center py-12">
-            <Link href="/fulfillment/gap-analysis">
+            <Link href="/#audit">
                 <motion.div
                     whileHover={{ scale: 1.1, rotate: 5 }}
                     whileTap={{ scale: 0.9 }}
