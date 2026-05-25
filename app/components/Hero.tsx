@@ -20,7 +20,7 @@ export const Hero: React.FC = () => {
                         Read Articles
                     </a>
                     <a
-                        href="#"
+                        href="#subscribe"
                         className="bg-white text-royal-blue border border-royal-blue px-8 py-4 rounded-full font-semibold hover:bg-royal-blue/5 transition-all text-center"
                     >
                         Subscribe <span className="italic font-normal">(free)</span>
