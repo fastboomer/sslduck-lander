@@ -2,7 +2,6 @@ import Header from './components/Header';
 import { Hero } from './components/Hero';
 import { ResumeOfferCard } from './components/ResumeOfferCard';
 import { SuccessStories } from './components/SuccessStories';
-import { NewsletterSignup } from './components/NewsletterSignup';
 import { Footer } from './components/Footer';
 
 export default function Home() {
@@ -13,7 +12,6 @@ export default function Home() {
       <Hero />
       <ResumeOfferCard />
       <SuccessStories />
-      <NewsletterSignup />
       <Footer />
     </main>
   );
