@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Volume2, VolumeX, Play, RotateCcw, RotateCw } from 'lucide-react';
+import { Volume2, VolumeX, RotateCcw, RotateCw } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIGURATION — Update VIDEO_URL after uploading to Firebase Storage
@@ -10,10 +10,19 @@ import { Volume2, VolumeX, Play, RotateCcw, RotateCw } from 'lucide-react';
 const VIDEO_URL = 'https://firebasestorage.googleapis.com/v0/b/fasth-lander-2026-v2.firebasestorage.app/o/GLO%20VIDEOS%2Fsix-resume-mistakes-avoid-like-plague-shortened-thumbnail.mp4?alt=media&token=327daa2c-7b9e-464f-a2c6-b4c2c8b152ce';
 const THUMBNAIL_URL = '/six-mistakes-thumbnail.png.png';
 
+const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+};
+
 export const SixMistakesVideo: React.FC = () => {
     const [hasStarted, setHasStarted] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     const handlePlay = () => {
@@ -110,6 +119,8 @@ export const SixMistakesVideo: React.FC = () => {
                         src={VIDEO_URL}
                         poster={THUMBNAIL_URL}
                         style={{ display: hasStarted ? 'block' : 'none' }}
+                        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
                     >
                         Your browser does not support the video tag.
                     </video>
@@ -143,15 +154,6 @@ export const SixMistakesVideo: React.FC = () => {
                                     </svg>
                                 </div>
                             </div>
-                            {/* Title badge */}
-                            <div className="absolute bottom-4 left-4 right-4">
-                                <div
-                                    className="inline-block text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full"
-                                    style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
-                                >
-                                    Free Training Video
-                                </div>
-                            </div>
                         </>
                     )}
 
@@ -159,43 +161,107 @@ export const SixMistakesVideo: React.FC = () => {
                     {hasStarted && !isPlaying && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity duration-300">
                             <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-xl animate-pulse">
-                                <Play className="w-8 h-8 text-white fill-white ml-1" />
+                                {/* Triangle play icon */}
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="white"
+                                    className="w-8 h-8 ml-1"
+                                >
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
                             </div>
                         </div>
                     )}
 
-                    {/* ── Custom Floating Control Bar ── */}
+                    {/* ── Mini progress bar at absolute bottom (always visible when playing) ── */}
                     {hasStarted && (
                         <div 
-                            className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full z-10 shadow-lg border border-white/10"
+                            className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 transition-all duration-300 group-hover:h-0 pointer-events-none"
+                        >
+                            <div 
+                                className="h-full bg-blue-600" 
+                                style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+                            />
+                        </div>
+                    )}
+
+                    {/* ── Premium Control Bar (Fades in on hover) ── */}
+                    {hasStarted && (
+                        <div 
+                            className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 flex flex-col gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Skip Back 10s */}
-                            <button
-                                onClick={skipBack}
-                                className="text-white/80 hover:text-white p-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-90 flex items-center justify-center"
-                                title="Back 10 seconds"
-                            >
-                                <RotateCcw className="w-4.5 h-4.5" />
-                            </button>
+                            {/* Progress bar + timeline */}
+                            <div className="flex items-center gap-3 w-full">
+                                <span className="text-white/80 text-xs font-mono select-none">
+                                    {formatTime(currentTime)}
+                                </span>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={duration || 100}
+                                    step="any"
+                                    value={currentTime}
+                                    onChange={(e) => {
+                                        const newTime = parseFloat(e.target.value);
+                                        setCurrentTime(newTime);
+                                        if (videoRef.current) {
+                                            videoRef.current.currentTime = newTime;
+                                        }
+                                    }}
+                                    className="flex-1 h-1.5 bg-white/25 rounded-full appearance-none cursor-pointer accent-white hover:h-2 transition-all outline-none"
+                                    style={{
+                                        background: `linear-gradient(to right, #2563eb 0%, #2563eb ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) 100%)`
+                                    }}
+                                />
+                                <span className="text-white/80 text-xs font-mono select-none">
+                                    {formatTime(duration)}
+                                </span>
+                            </div>
 
-                            {/* Sound Mute/Unmute */}
-                            <button
-                                onClick={toggleMute}
-                                className="text-white hover:text-white/90 p-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-90 flex items-center justify-center border-x border-white/10 px-2.5"
-                                title={isMuted ? "Unmute" : "Mute"}
-                            >
-                                {isMuted ? <VolumeX className="w-4.5 h-4.5" /> : <Volume2 className="w-4.5 h-4.5" />}
-                            </button>
+                            {/* Controls row */}
+                            <div className="flex items-center justify-between w-full mt-1 px-1">
+                                <div className="flex items-center gap-4">
+                                    {/* Play/Pause */}
+                                    <button
+                                        onClick={togglePlayPause}
+                                        className="text-white hover:text-blue-400 transition-colors p-1.5 rounded-full hover:bg-white/10 active:scale-95"
+                                    >
+                                        {isPlaying ? (
+                                            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                                        ) : (
+                                            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                        )}
+                                    </button>
 
-                            {/* Skip Forward 10s */}
-                            <button
-                                onClick={skipForward}
-                                className="text-white/80 hover:text-white p-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-90 flex items-center justify-center"
-                                title="Forward 10 seconds"
-                            >
-                                <RotateCw className="w-4.5 h-4.5" />
-                            </button>
+                                    {/* Skip Back 10s */}
+                                    <button
+                                        onClick={skipBack}
+                                        className="text-white/80 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10 active:scale-90"
+                                        title="Back 10 seconds"
+                                    >
+                                        <RotateCcw className="w-4.5 h-4.5" />
+                                    </button>
+
+                                    {/* Skip Forward 10s */}
+                                    <button
+                                        onClick={skipForward}
+                                        className="text-white/80 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10 active:scale-90"
+                                        title="Forward 10 seconds"
+                                    >
+                                        <RotateCw className="w-4.5 h-4.5" />
+                                    </button>
+                                </div>
+
+                                {/* Volume / Mute */}
+                                <button
+                                    onClick={toggleMute}
+                                    className="text-white/80 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10 active:scale-90"
+                                    title={isMuted ? "Unmute" : "Mute"}
+                                >
+                                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -207,3 +273,4 @@ export const SixMistakesVideo: React.FC = () => {
         </div>
     );
 };
+
