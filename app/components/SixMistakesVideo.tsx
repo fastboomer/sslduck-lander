@@ -90,6 +90,8 @@ export const SixMistakesVideo: React.FC = () => {
                     lineHeight: '1.5',
                 }}>
                     Six resume mistakes that silently kill your chances — even when you&apos;re the most qualified candidate in the room.
+                    <br /><br />
+                    Notable quote: <em>&quot;Your resume isn&apos;t your autobiography. It&apos;s a targeted pitch! Get it?&quot;</em>
                 </p>
 
                 {/* Responsive video container */}

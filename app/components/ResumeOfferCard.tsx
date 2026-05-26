@@ -267,7 +267,7 @@ export const ResumeOfferCard: React.FC = () => {
                     Included Features!
                 </h1>
 
-                <h2 style={{ fontSize: '19px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '19px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#002366', marginBottom: '20px' }}>
                     Applicant Suitability Study
                 </h2>
 
@@ -277,7 +277,7 @@ export const ResumeOfferCard: React.FC = () => {
 
                 <div className="space-y-6 text-black">
                     <div className="flex flex-col">
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#002366', margin: 0, padding: 0, lineHeight: '1.2' }}>
                             1. Hard and Soft Skills Analysis
                         </h3>
                         <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
@@ -286,7 +286,7 @@ export const ResumeOfferCard: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col">
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#002366', margin: 0, padding: 0, lineHeight: '1.2' }}>
                             2. Target Job Requirements. 
                         </h3>
                         <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
@@ -295,7 +295,7 @@ export const ResumeOfferCard: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col">
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#002366', margin: 0, padding: 0, lineHeight: '1.2' }}>
                             3. Probable ATS Diagnosis
                         </h3>
                         <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
@@ -304,7 +304,7 @@ export const ResumeOfferCard: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col">
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#002366', margin: 0, padding: 0, lineHeight: '1.2' }}>
                             4. Probable Interview Questions Based on Your Resume vs Job Requirements
                         </h3>
                         <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
@@ -313,7 +313,7 @@ export const ResumeOfferCard: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col">
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#002366', margin: 0, padding: 0, lineHeight: '1.2' }}>
                             5. Bonus 1 - Best Practices Audit
                         </h3>
                         <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
@@ -322,7 +322,7 @@ export const ResumeOfferCard: React.FC = () => {
                     </div>
 
                     <div className="flex flex-col">
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#333', margin: 0, padding: 0, lineHeight: '1.2' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#002366', margin: 0, padding: 0, lineHeight: '1.2' }}>
                             6. Bonus 2 - Other Jobs You Are Qualified For
                         </h3>
                         <p style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', margin: 0, padding: 0, lineHeight: '1.4', marginTop: '2px' }}>
