@@ -15,7 +15,7 @@ export const Hero: React.FC = () => {
                     transition={{ duration: 0.5 }}
                     className="text-center mb-12"
                 >
-                    <h1 className="text-3xl md:text-5xl font-bold text-royal-blue tracking-tight mb-4">
+                    <h1 className="text-4xl md:text-6xl font-bold text-royal-blue tracking-tight mb-4">
                         Stop Losing Jobs You're Actually Qualified For!
                     </h1>
                     <p className="text-xl md:text-2xl text-royal-blue/70 italic mb-6">

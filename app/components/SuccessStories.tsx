@@ -36,7 +36,7 @@ export const SuccessStories: React.FC = () => {
                     viewport={{ once: true }}
                     className="text-center mb-20 animate-glow"
                 >
-                    <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-royal-blue mb-6">
+                    <h2 className="text-2xl md:text-4xl font-bold tracking-tight text-royal-blue mb-6">
                         Premium Research for <br />
                         Elite Career Growth
                     </h2>
