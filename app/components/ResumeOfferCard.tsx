@@ -264,7 +264,7 @@ export const ResumeOfferCard: React.FC = () => {
                 `}} />
                 
                 <h1 style={{ color: '#FF0000', fontSize: '24px', fontStyle: 'italic', fontWeight: 900, fontFamily: "'Rubik', system-ui, sans-serif", letterSpacing: '-0.02em', marginBottom: '24px' }}>
-                    Today's Free Feature!
+                    Included Features!
                 </h1>
 
                 <h2 style={{ fontSize: '19px', fontWeight: 'bold', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000', marginBottom: '20px' }}>
