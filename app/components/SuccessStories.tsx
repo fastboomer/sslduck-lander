@@ -36,7 +36,7 @@ export const SuccessStories: React.FC = () => {
                     viewport={{ once: true }}
                     className="text-center mb-20 animate-glow"
                 >
-                    <h2 className="text-5xl md:text-7xl font-bold tracking-tight text-royal-blue mb-6">
+                    <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-royal-blue mb-6">
                         Premium Research for <br />
                         Elite Career Growth
                     </h2>
@@ -50,12 +50,12 @@ export const SuccessStories: React.FC = () => {
                         >
                             Read Articles
                         </Link>
-                        <a
-                            href="#subscribe"
+                        <Link
+                            href="/subscribe"
                             className="bg-white text-royal-blue border border-royal-blue px-8 py-4 rounded-full font-semibold hover:bg-royal-blue/5 transition-all text-center"
                         >
                             Subscribe <span className="italic font-normal">(free)</span>
-                        </a>
+                        </Link>
                     </div>
                 </motion.div>
 
