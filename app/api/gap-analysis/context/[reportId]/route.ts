@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/app/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import fs from 'fs';
 import path from 'path';
 
@@ -17,14 +16,9 @@ export async function GET(
     }
 
     try {
-        if (!db) {
-            throw new Error('Database not initialized');
-        }
+        const docSnap = await adminDb.collection('gap-reports').doc(reportId).get();
 
-        const docRef = doc(db, 'gap-reports', reportId);
-        const docSnap = await getDoc(docRef);
-
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
             console.warn(`[GAP_CONTEXT] Report ${reportId} not found in Firestore.`);
             return NextResponse.json({ error: 'Report not found' }, { status: 404 });
         }
