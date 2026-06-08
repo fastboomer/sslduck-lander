@@ -6,8 +6,7 @@ export const maxDuration = 120; // Claude Sonnet analysis ~15-40s + file extract
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
-import { db } from '@/app/lib/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 import { extractTextFromFile, createGapPdf } from '@/lib/gap-utils';
 import { sendGapReport } from '@/app/lib/mail';
 import fs from 'fs';
@@ -230,9 +229,9 @@ ${combinedReqText.substring(0, 2000)}`,
         // 7. Save Glo brief to Firestore immediately — user can redirect now
         console.log("[GAP_PROCESS] Saving Glo brief to Firestore...");
         // reportId + customOfferUrl already created above (before finalPrompt build)
-        if (!db) throw new Error("Database connection unavailable.");
+        if (!adminDb) throw new Error("Database connection unavailable.");
         try {
-            await setDoc(doc(db, 'gap-reports', reportId), {
+            await adminDb.collection('gap-reports').doc(reportId).set({
                 reportId,
                 candidateName,
                 email: extractedEmail || '',
@@ -298,7 +297,7 @@ ${combinedReqText.substring(0, 2000)}`,
                 }
 
                 // Update Firestore with full analysis
-                await setDoc(doc(db, 'gap-reports', reportId), {
+                await adminDb.collection('gap-reports').doc(reportId).set({
                     analysis,
                     status: 'completed'
                 }, { merge: true });
