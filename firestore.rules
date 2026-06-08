@@ -7,7 +7,14 @@ service cloud.firestore {
     // Public read (blog content). No public writes.
     match /articles/{articleId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if false; // Write only via Admin SDK (server-side)
+    }
+
+    // ─── Settings ───────────────────────────────────────────────
+    // Allow reading and writing of configuration/settings from the client.
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if false; // Write only via Admin SDK (server-side)
     }
 
     // ─── Gap Reports ────────────────────────────────────────────
@@ -15,7 +22,7 @@ service cloud.firestore {
     // Keep writes open; reads are unrestricted too for report retrieval.
     match /gap-reports/{reportId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if false; // Write only via Admin SDK (server-side)
     }
 
     // ─── User Access ─────────────────────────────────────────────

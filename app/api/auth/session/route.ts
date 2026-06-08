@@ -43,9 +43,7 @@ export async function POST(req: NextRequest) {
       hasEmail: !!process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
     });
     return NextResponse.json({ 
-      error: 'Session failed', 
-      detail: err.message,
-      code: err.code || err.name 
+      error: 'Session creation failed'
     }, { status: 401 });
   }
 }
