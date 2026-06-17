@@ -9,5 +9,19 @@ AI-BRIEFS/
 
 # Firebase service account keys
 Member Control/*.json
+fasth-lander-2026-v2-firebase-adminsdk-fbsvc-2f1f6bdc34.json
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Scratch and test files
+scratch/
+test_output.docx
+test_docx_generation.js
+
+# Local screenshots and assets not used in production
+SCREENSHOTS/
+FORMAT RULES/
+IMAGES/logo-owl.png
 
 .vercel

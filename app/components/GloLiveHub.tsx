@@ -18,8 +18,11 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
     try {
         if (!apiKey) throw new Error("API Key missing");
         onLog(`Requesting Live TTS for voice: ${voiceName}...`);
+        
+        const isApiKey = apiKey.startsWith('AIzaSy');
+        const authParam = isApiKey ? `key=${apiKey}` : `access_token=${apiKey}`;
         // v1beta is required for all 2.5+ native audio models; v1alpha only supported 2.0
-        const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+        const liveUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?${authParam}`;
         const ws = new WebSocket(liveUrl);
         let actx: AudioContext | null = null;
         let nextScheduleTime = 0;
@@ -65,7 +68,7 @@ const playGeminiLiveTTS = async (text: string, voiceName: string, apiKey: string
             onLog('TTS WS Open. Sending Setup...');
             ws.send(JSON.stringify({
                 setup: {
-                    model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
+                    model: 'models/gemini-3.1-flash-live-preview',
                     generationConfig: {
                         temperature: 0.1,
                         topP: 0.05,
@@ -221,9 +224,10 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext
         });
     }, []);
 
+    const [accessToken, setAccessToken] = useState<string | null>(null);
     const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY || '').trim();
     const { isActive, startSession: startGemini, stopSession, reset: resetGeminiError, volume, micPeak, error: geminiError, geminiStatus } = useGeminiLive(
-        apiKey || '',
+        accessToken || apiKey || '',
         context,
         addLog,
         // onNaturalEnd: Gemini closed the session cleanly (code 1000/1001) — treat as normal end
@@ -232,6 +236,27 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext
             setTimeout(() => setHasSessionEnded(true), 1500);
         }
     );
+
+    // Fetch secure session token on mount
+    useEffect(() => {
+        if (!reportId) return;
+        const fetchToken = async () => {
+            try {
+                addLog("Fetching secure session credentials...");
+                const res = await fetch(`/api/glo/session-token?reportId=${reportId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setAccessToken(data.accessToken);
+                    addLog("Secure session token obtained.");
+                } else {
+                    addLog("Failed to fetch secure session token, fallback to local client key.");
+                }
+            } catch (err: any) {
+                addLog(`Token fetch error: ${err.message}`);
+            }
+        };
+        fetchToken();
+    }, [reportId, addLog]);
 
     // Fetch context on mount — skipped if parent already provided initialContext
     useEffect(() => {
@@ -257,12 +282,14 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext
         fetchContext();
     }, [reportId, addLog]);
 
-    // ΓöÇΓöÇ Simone Intro via Web Speech API (no user-gesture required) ΓöÇΓöÇ
+    // ── Simone Intro via Web Speech API (no user-gesture required) ──
     const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
     useEffect(() => {
         if (!context || hasPlayedIntroRef.current) return;
         if (status !== 'IDLE' && status !== 'PREFLIGHT') return;
+        // Wait for credentials (either secure accessToken or fallback apiKey) to be loaded
+        if (!accessToken && !apiKey) return;
 
         const timer = setTimeout(() => {
             if (hasPlayedIntroRef.current || !isPreTalk) return;
@@ -279,7 +306,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext
             playGeminiLiveTTS(
                 text,
                 'Erinome',
-                apiKey,
+                accessToken || apiKey || '',
                 () => addLog('Simone TTS: Speaking.'),
                 () => {
                     addLog('Simone TTS: Finished.');
@@ -290,7 +317,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext
             );
         }, 50); // 50ms: fire almost immediately after context is ready
         return () => clearTimeout(timer);
-    }, [context, status, isPreTalk, addLog, apiKey]);
+    }, [context, status, isPreTalk, addLog, apiKey, accessToken]);
 
     // Mic Management & Pre-flight
     const micMeterRef = useRef<AudioContext | null>(null);
@@ -491,12 +518,12 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext
 
         const timer = setTimeout(() => {
             const firstName = context?.candidateName?.split(' ')[0] || 'there';
-            const abandonText = `Hey ${firstName}, are you still there? Let me know if you need any help deciding on a package.`;
+            const abandonText = `Hey ${firstName}, are you still there? Let know if you need any help deciding on a package.`;
             
             playGeminiLiveTTS(
                 abandonText,
                 'Kore',
-                apiKey,
+                accessToken || apiKey || '',
                 () => addLog('Abandonment TTS: Speaking.'),
                 () => addLog('Abandonment TTS: Finished.'),
                 addLog
@@ -504,7 +531,7 @@ export const GloLiveHub: React.FC<GloLiveHubProps> = ({ reportId, initialContext
         }, 90 * 1000); // 90 seconds
 
         return () => clearTimeout(timer);
-    }, [hasSessionEnded, apiKey, addLog, context]);
+    }, [hasSessionEnded, apiKey, accessToken, addLog, context]);
 
     const displayError = geminiError || localError;
     const isShowingSessionUI = status === 'CONNECTING' || status === 'ACTIVE' || status === 'ERROR';

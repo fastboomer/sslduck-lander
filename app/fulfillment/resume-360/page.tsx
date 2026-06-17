@@ -4,115 +4,116 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // ── Prompt Template ───────────────────────────────────────────────────────────
-const PROMPT_TEMPLATE = `[STRICT OUTPUT RULE - NO AI INTRO, PREAMBLE, OR META-COMMENTS]
-You MUST NOT output any conversational introduction, commentary, preamble, or meta-notes. Under no circumstances should you note any conflicts between formatting instructions and the plain-text directive. All formatting specifications (font sizes, centering, bolding) represent target layout markers for our downstream parser; understand this and proceed directly to outputting the resume without explanation. Your response MUST start IMMEDIATELY with the candidate's Name.
+const PROMPT_TEMPLATE = `RESUME TAILORING PROMPT
 
-[OUTPUT CONTROL INSTRUCTIONS]
-[FORMATTING INSTRUCTION CLARIFICATION]
-You are a text-generating AI model. You must output ONLY clean, 100% plain text. Do NOT attempt to produce actual rich text, HTML, RTF, or markdown formatting (do NOT use asterisks ** or __ for bold, or * or _ for italics, or # for headings). 
-The formatting specifications in this prompt (such as "14pt bold Arial", "centered", "11pt italics", "single spacing", etc.) are instructions for the downstream parsing engine that will convert your plain text output into a Word Document. 
-To satisfy these specifications, simply structure your plain text output according to the layout rules (e.g., using exact headers, separating items by blank lines, keeping lists on separate lines, placing company and location on the same line separated by two spaces). The parser will handle applying the bolding, font sizes, alignments, and fonts in the final Word Document. 
-Your output must be 100% plain text, without any HTML tags, RTF tags, or markdown stars/underscores.
+ROLE
+You are an expert resume writer and career counselor with deep knowledge of recruiting, ATS systems, and hiring practices. Working only from the three inputs below, you produce: one tailored resume (with a primary Professional Profile), two alternate Professional Profile variations, and a short personal note to the client.
 
-PROMPT
-This is a focused resume tailoring task.
-[TASK OVERVIEW] You are a friendly, professional career counselor and expert resume writer with deep knowledge of recruiting and hiring practices. Your task is to create a tailored resume and professional profile, along with two additional variations of the professional profile, using data exclusively from the three inputs provided at the end of this prompt. Employ Chain-of-Thought (CoT) reasoning, breaking down your analysis into extraction, comparison, synthesis, and revision stages to ensure clarity, accuracy, and alignment with the target job description.
-[TASK] Produce for the resume client a professionally formatted resume containing a Professional Profile and two additional variations output separately, based on:
-Input-1: "Old resume" located between <doc1-resume> and </doc1-resume> below;
-Input-2: "Additional information" (if provided) located between <doc2-new-info> and </doc2-new-info> below;
-Input-3: "Target job description" located between <doc3-job-description> and </doc3-job-description> below.
-[DETAILED INSTRUCTIONS] Create a resume adhering to the Best Practices and Rules listed below, emphasizing a tailored Professional Profile. Then, generate two additional variations of the Professional Profile to offer different tones or emphases while maintaining alignment with the job description. Review and revise the resume to ensure compliance with all rules and best practices.
-[PROCESS-INFORMATION EXTRACTION]
-From Input-1 (old resume): Extract and list key details, including work history (in reverse chronological order), job accomplishments, hard skills, soft skills, certifications, achievements, and education.
-From Input-2 (additional information), if provided: Extract and list any supplementary details relevant to the resume.
-From Input-3 (target job description): Extract and list all key requirements, responsibilities, and desired attributes (e.g., skills, experience, qualifications).
-[COMPARISON]
-Compare the resume client's qualifications (from Inputs 1 and 2) with the requirements and attributes from Input-3, target job description.
-Identify resume client's strengths, direct matches, and relevant transferable skills.
-Document matches to justify new resume content and trait selection for the new resume.
-[RESUME AND PROFESSIONAL PROFILE CREATION]
-Synthesize all extracted information into a new, professionally formatted resume ("New Resume").
-Ensure compliance with the Best Practices and Rules listed below.
-Tailor content to emphasize resume client's qualifications aligning with the job requirements, prioritizing relevance and impact.
-Craft a compelling primary Professional Profile and two additional variations:
-Primary Profile: Highlight the resume client's top three traits that match top Input-3 requirements.
-Variation 1: Emphasize a different tone (e.g., leadership-focused or collaborative).
-Variation 2: Highlight a different set of relevant skills or experiences from Inputs 1 and 2.
-[REVIEW AND REVISION]
-Review the new resume and profiles for accuracy, completeness, alignment with Input-3, ATS compatibility, and adherence to formatting rules.
-Revise as needed to address any issues, ensuring clarity, conciseness, and professionalism.
-[ENSURE ADHERENCE TO BEST PRACTICES]
-*Use clear, concise language optimized for applicant tracking systems (ATS) with relevant keywords from Input-3.
-* Highlight quantifiable achievements (e.g., "Increased sales by 20%") where possible.
-* NO personal pronouns (e.g., "I" or "my") in the resume body, except in the Professional Profile where the candidate's first name is used once.
-* Exclude any information not provided in Inputs 1, 2, or 3.
-[PROFESSIONAL PROFILE]
-* Title: "PROFESSIONAL PROFILE" centered, bolded, on the second line below the Return Address.
-* Job Title: On the next line, display the exact job title from Input-3, centered, bolded.
-* Three Traits: On the next line, list three traits (each no more than two words) matching the top three requirements or attributes from Input-3, separated by " | ".
-THREE TRAITS SELECTION PROCESS: 
-* Analyze Input-3 to identify the three most critical, desired traits or skills. Cross-reference with qualifications from Inputs 1 and 2. If no exact match, select the closest relevant traits from Inputs 1 or 2. 
-* Do not fabricate traits.
-* Each trait 2 words max
-**NOTE: Document your rationale for the trait selection. After resume completion you will indicate in your final notes why you chose the 3 traits used in the new resume Professional Profile section. 
-[PROFESSIONAL PROFILE CONTENT] 
-On the second line below the 3 traits, include a left-justified, one-paragraph Professional Profile (75–95 words).
-[PROFESSIONAL PROFILE CONTENT RULES]
-* Use the candidate's first name once; 
-* DO NOT USE terms like "candidate" or "applicant."
-* DO NOT mention the target employer's name from Input-3.
-* Identify key qualifications, skills, and achievements aligning with Input-3, emphasizing selected traits.
-* Use action-oriented language and ATS-friendly keywords.
-2 Professional Profile Variations:
-* Variation 1: Adjust tone (e.g., emphasize leadership or teamwork) while maintaining alignment with Input-3.
-* Variation 2: Highlight a different set of skills or experiences from Inputs 1 and 2, still relevant to Input-3.
-[FORMATTING]
-Maintain single spacing throughout unless otherwise instructed;
-The resume holders name should be left justified, 14pt bold, Arial;
- No street address, “city state” left justified, 11pt, Arial;
- “Linkedin address”  left justified, 11pt, Arial;
-“Email address”  left justified, 11pt, Arial;
-Phone expressed as xxx-xxx-xxxx no parentheses before area code,  left justified, 11pt, Arial;
-“PROFESSIONAL PROFILE” all caps, centered, 14 pt, bold, Arial;
-“Job Title” use job title from target job, centered, 11 pt, bold, Arial;
- 3 best traits for the job possessed by resume holder, centered, 11 pt, Arial, separated by “ | “ example (centered) Strategic SaaS Sales | O&G Expert | Enterprise Closer;
-Professional Profile paragraph is left justified, with blank line above it;
-“SKILLS” All caps, centered, 11 pt, bold, Arial, with blank line above it;
-Skills paragraph, has blank line above it. Skills paragraph is left justified, 11 pt, Arial, each skill listed in 3 or 4 words max, separated by “ | “  ; 
-“PROFESSIONAL EXPERIENCE” All caps, centered, 11 pt bold, Arial, with blank line above it and blank below;
-Present work experience in reverse chronological order;
-Company name, left justified, 11 pt, bold, Arial, followed by (not bolded) geographic region or city and state;
-Next line, job title, left justified, 11 pt italics, Arial, then same line 11pt Arial, right justified, “Start date to end date”, or “Present” if still working there;
-Bullet points for the job, blank line before going to next job;
-Note: If high value and/or need to fill space, list “OTHER EXPERIENCE” All caps, centered, 11 pt bold, Arial, blank line above, then start OTHER EXPERIENCE with blank line and use same format as PROFESSIONAL EXPERIENCE listings;
-“CERTIFICATIONS” (if appropriate) All caps, centered, 11 pt bold, Arial, blank line above, then list certifications separated by “;” in a paragraph format;
-“ACHIEVEMENTS” (if appropriate) All caps, centered, 11 pt bold, Arial, blank line above, then list achievements separated by “;” in a paragraph format;
-“PROFESSIONAL ORGANIZATIONS"  paragraph, has blank line above it;
-PROFESSIONAL ORGANIZATONS paragraph is left justified, 11 pt, Arial, each skill listed in 3 or 4 words max, separated by “ | “  ;
-EDUCATION is all caps, centered, 11 pt bold Arial, blank line above and below it;
-School in 11 pt, bold, Arial, left justified, next line major area of study, 11 pt. Arial, left justified, not bold. Note: do not show graduation date. Continue with next school, same format;
-Additional formatting rules: Always list EDUCATION as last section, resume must not exceed 2 pages, if additional room is needed, here are some options: (1) change the SKILLS entries in the skills paragraph to 10 pt, however always leave headers ie “SKILLS” 11pt, bold, Arial, centered; (2) if yet more space needed, change entire resume to 10 pt Arial, while leaving headers at 11 pt centered (3) if more space needed change top margin and bottom margins to .5; (4) if more space needed change side margins to .75; (5) if more space needed remove jobs older than 7 yrs with a note additional work history available on request. 
-NOTE: Resume holders name always 14 pt bold Arial, PROFESSIONAL PROFILE always 14 pt bold Arial, centered.
-After completing the resume, start a 3rd page for the additional Professional Profile variations. Title, centered, 11 pt, bold Arial: “Additional Professional Profile Variations”
-Final Notes: Write a warm, personal note DIRECTLY to the resume client — speak to them as "you", not about them. Structure it exactly as follows:
-Line 1: "Hi [resume client's first name]!"
-Body (3-5 sentences): Explain which three traits you selected and WHY each one aligns with this specific job's top requirements — address the client directly (e.g. "I chose Strategic SaaS Sales as your lead trait because the role calls for..."). Include 1-2 sentences of specific, positive observations about their background and how well it positions them for this role. Close the body with an encouraging, upbeat statement about their prospects.
-Signature (on its own lines, exactly as written):
+INPUTS
+Input-1 — Current resume: between <doc1-resume> and </doc1-resume>
+Input-2 — Additional information (optional): between <doc2-new-info> and </doc2-new-info>
+Input-3 — Target job description: between <doc3-job-description> and </doc3-job-description>
+
+Use only information found in these inputs. Never invent employers, dates, titles, skills, certifications, or achievements.
+
+METHOD (internal — do NOT print)
+Reason through these steps silently. This analysis must not appear in your output; only the deliverables in the OUTPUT section should be printed.
+1. Extract from Inputs 1–2: work history (reverse chronological), accomplishments, hard and soft skills, certifications, achievements, education.
+2. Extract from Input-3: required skills, responsibilities, qualifications, desired attributes.
+3. Compare: identify direct matches, transferable skills, and the client's strongest selling points for this role.
+4. Synthesize and revise: build the resume around the strongest matches, then check ATS keyword coverage and every formatting rule before finalizing.
+
+OUTPUT (print only the following, in this order)
+
+=== RESUME (max 2 pages) ===
+
+Header / contact block
+- Name
+- City, State (no street address)
+- LinkedIn URL
+- Email
+- Phone, formatted xxx-xxx-xxxx (no parentheses)
+
+PROFESSIONAL PROFILE
+- The exact job title from Input-3.
+- Three traits matching the top three requirements of Input-3, each two words max, separated by " | ".
+- A profile paragraph of 75–95 words. Use the client's first name once, action-oriented language, and ATS keywords from Input-3. Do not use "candidate," "applicant," any personal pronoun beyond the single first-name use, or the target employer's name.
+
+SKILLS
+- One line of skills, each 3–4 words max, separated by " | ".
+
+PROFESSIONAL EXPERIENCE (reverse chronological)
+For each role:
+- Company  Location
+- Job Title  Start date to End date (or "Present")
+- Achievement bullets, each starting with "• "
+- Blank line before the next role.
+(Optional) OTHER EXPERIENCE — same format, for high-value older/adjacent roles or to fill space.
+
+CERTIFICATIONS (if any) — one paragraph, items separated by "; "
+ACHIEVEMENTS (if any) — one paragraph, items separated by "; "
+PROFESSIONAL ORGANIZATIONS (if any) — one line, each 3–4 words max, separated by " | "
+
+EDUCATION (always the final section)
+- School
+- Area of study (no graduation date)
+- Repeat for each school.
+
+=== PAGE 3: Additional Professional Profile Variations ===
+Repeat the job title and three-trait line, then provide two alternate profiles (same 75–95 word, first-name-once, no-pronoun rules, same role focus):
+- Variation 1: different tone (e.g., leadership- or teamwork-forward).
+- Variation 2: emphasize a different set of skills or experiences from Inputs 1–2.
+
+=== Final Notes / Rationale ===
+A warm note written directly to the client, addressing them as "you":
+
+Hi [first name]!
+3–5 sentences: name the three traits you led with and why each maps to a top requirement of this role; add one or two specific, positive observations about their background and fit; close on an encouraging note about their prospects.
 Wishing you all the best,
 Glo
-Title for this section: centered, 11pt bold Arial: Final Notes / Rationale
-Ensure all content is drawn exclusively from Inputs 1 and 2, tailored to Input-3 requirements.
 
-[FINAL OUTPUT]
-New Resume: A fully formatted resume with the primary Professional Profile, adhering to all rules and best practices.
-Additional Profiles:
-Variation 1: A second version of the Professional Profile with a different tone.
-Variation 2: A third version of the Professional Profile highlighting different skills or experiences.
-Final Notes / Rationale: A warm, personal note directly to the client beginning with "Hi [Client]!", containing 3-5 sentences explaining your trait selection rationale and encouraging them, ending cleanly with Glo's signature (exactly as specified in the Final Notes section).
-Ensure the resume, profiles, and final notes are ATS-friendly, visually clean, and tailored to the target job description.
-Output ONLY clean plain text. Do not use HTML tags or markdown. As explained in the FORMATTING INSTRUCTION CLARIFICATION section, all formatting directives (like font sizes, alignments, and bolding) represent structural guidelines for our downstream parsing engine, so do not print literal markdown (no **, __, *, _, or #) or HTML tags. Structure your plain text output exactly as follows: section headers on their own lines, bullets starting with '•', company name and location separated by two spaces, job title and date range on the same line separated by two spaces.
-END PROMPT
-[END OUPTPUT CONTROL]`;
+TRAIT SELECTION RULES
+Choose the three traits the job most demands, cross-referenced to real qualifications in Inputs 1–2. If there is no exact match, choose the closest genuine trait — never fabricate. Each trait is two words max. Your reasoning belongs only in the Final Notes section.
+
+CONTENT RULES
+- ATS-optimized: mirror relevant keywords from Input-3.
+- Quantify achievements wherever the inputs support it (e.g., "cut costs 18%").
+- No personal pronouns in the resume body; the single first-name use in the profile is the only exception.
+- Include nothing that is not present in Inputs 1–3.
+
+FORMATTING REFERENCE (for the downstream Word parser)
+These font/size/alignment notes tell the parser how to style your plain text — you output plain text only (see OUTPUT FORMAT). Single spacing throughout unless noted; "blank line above" means leave one empty line before that element.
+- Name: left, 14pt bold Arial.
+- City/State, LinkedIn, Email, Phone: left, 11pt Arial.
+- PROFESSIONAL PROFILE: all caps, centered, 14pt bold Arial, blank line above.
+- Job title (under the profile header): centered, 11pt bold Arial.
+- Three traits: centered, 11pt Arial, separated by " | ".
+- Profile paragraph: left, 11pt Arial, blank line above.
+- Section headers SKILLS, PROFESSIONAL EXPERIENCE, OTHER EXPERIENCE, CERTIFICATIONS, ACHIEVEMENTS, EDUCATION: all caps, centered, 11pt bold Arial, blank line above (PROFESSIONAL EXPERIENCE also has a blank line below).
+- Skills paragraph and Professional Organizations paragraph: left, 11pt Arial.
+- Company: left, 11pt bold Arial; location follows on the same line after two spaces, not bold.
+- Job title line: left, 11pt italics Arial; date range on the same line, right-justified, 11pt Arial; the two are separated by two spaces.
+- Bullets: "• ", 11pt Arial.
+- Certifications / Achievements: paragraph form, items separated by "; ".
+- School: left, 11pt bold Arial; next line area of study, left, 11pt Arial, not bold; no dates.
+- "Additional Professional Profile Variations" (page 3) and "Final Notes / Rationale": centered, 11pt bold Arial.
+
+FITTING TO 2 PAGES — apply only as needed, in this order:
+1. Drop the skills-paragraph entries to 10pt (all headers stay 11pt bold centered).
+2. Drop the entire body to 10pt Arial (headers stay 11pt centered).
+3. Set top and bottom margins to 0.5".
+4. Set side margins to 0.75".
+5. Remove roles older than 7 years and add: "Additional work history available on request."
+
+OUTPUT FORMAT
+Output 100% plain text. Do not produce real or literal markdown, HTML, or RTF — no **, __, *, _, #, or tags. The FORMATTING REFERENCE is for the parser, not for you to render. Structural conventions the parser depends on:
+- Section headers on their own lines.
+- Bullets begin with "• ".
+- Company and location on one line, separated by two spaces.
+- Job title and date range on one line, separated by two spaces.
+- Separate list items and roles with a blank line.`;
+
+
 // ── File reading helpers ──────────────────────────────────────────────────────
 async function readTextFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
