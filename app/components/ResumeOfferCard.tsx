@@ -42,7 +42,19 @@ export const ResumeOfferCard: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         console.log("[DEBUG] ResumeOfferCard submission started. Version: 12");
         e.preventDefault();
-        if (!resumeFile || !jobDescription) return;
+        
+        if (!resumeFile && !jobDescription.trim()) {
+            setError("Please upload your resume and copy/paste the target job description.");
+            return;
+        }
+        if (!resumeFile) {
+            setError("Please upload your primary resume.");
+            return;
+        }
+        if (!jobDescription.trim()) {
+            setError("Please copy/paste the target job description.");
+            return;
+        }
 
         setIsProcessing(true);
         setProgress(0);
@@ -123,7 +135,7 @@ export const ResumeOfferCard: React.FC = () => {
                 <div className="relative z-10 text-royal-blue">
                     <h2 className="text-3xl font-bold mb-2">In a rush? (v12)</h2>
                     <p className="text-lg text-royal-blue/70 mb-8">
-                        Get a Free Professional Resume Audit & GAP Analysis delivered Right Now, On The Spot!
+                         Get a Free Professional Resume Audit & GAP Analysis delivered Right Now, On The Spot!
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-8">
@@ -140,7 +152,13 @@ export const ResumeOfferCard: React.FC = () => {
                         >
                             <Upload className={cn("w-12 h-12 mb-4", resumeFile ? "text-royal-blue" : "text-royal-blue/50")} />
                             <div className="mb-2 font-bold text-royal-blue">
-                                {resumeFile ? `Resume: ${resumeFile.name}` : "Drop your primary resume here"}
+                                {resumeFile ? (
+                                    `Resume: ${resumeFile.name}`
+                                ) : (
+                                    <span>
+                                        Drop your primary resume here <span className="text-red-500">*</span>
+                                    </span>
+                                )}
                             </div>
                             {!resumeFile ? (
                                 <>
@@ -182,7 +200,7 @@ export const ResumeOfferCard: React.FC = () => {
                         <div className="space-y-3 border-2 border-dashed border-royal-blue/30 p-6 rounded-2xl" style={{ backgroundColor: '#f0f7ff' }}>
                             <label className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-royal-blue">
                                 <FileText className="w-4 h-4" />
-                                Copy/Paste Target Job Description
+                                Copy/Paste Target Job Description <span className="text-red-500">*</span>
                             </label>
                             <textarea
                                 rows={5}
@@ -201,10 +219,10 @@ export const ResumeOfferCard: React.FC = () => {
                         )}
 
                         <button
-                            disabled={isProcessing || !resumeFile || !jobDescription}
+                            disabled={isProcessing}
                             className={cn(
                                 "w-full text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl disabled:cursor-not-allowed",
-                                jobDescription ? "bg-royal-blue hover:bg-royal-blue/90 hover:shadow-royal-blue/20" : "bg-royal-blue/40 opacity-80"
+                                "bg-royal-blue hover:bg-royal-blue/90 hover:shadow-royal-blue/20"
                             )}
                         >
                             {isProcessing ? (
