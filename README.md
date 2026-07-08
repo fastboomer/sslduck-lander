@@ -29,6 +29,17 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Videos with Remotion
+
+This project includes [Remotion](https://www.remotion.dev) for creating videos with React code. Compositions live in `remotion/`.
+
+```bash
+npm run remotion:studio   # open the Remotion Studio to preview/edit compositions
+npm run remotion:render   # render the HelloWorld composition to out/video.mp4
+```
+
+If your environment has no network access to download Remotion's own headless Chrome, set `REMOTION_BROWSER_EXECUTABLE` to a local Chromium/Chrome Headless Shell binary before running the render command.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

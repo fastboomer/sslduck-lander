@@ -24,4 +24,7 @@ SCREENSHOTS/
 FORMAT RULES/
 IMAGES/logo-owl.png
 
+# Remotion render output
+out/
+
 .vercel
