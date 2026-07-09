@@ -52,7 +52,6 @@ export const GloVideo: React.FC = () => {
                 ref={videoRef}
                 key={isMobile ? 'portrait' : 'landscape'}
                 controls
-                autoPlay
                 muted
                 loop
                 playsInline
